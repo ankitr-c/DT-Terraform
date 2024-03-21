@@ -67,13 +67,6 @@ module "compute_instance" {
   deletion_protection = false
   subnetwork          = var.network.subnet
   subnetwork_project  = var.network.project
-
-  access_config = [
-    { nat_ip       = "AUTO_ONLY",
-      network_tier = "PREMIUM"
-    }
-  ]
-
 }
 
 
