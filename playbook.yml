@@ -1,0 +1,34 @@
+---
+- name: Installing Apache
+  hosts: all # Matched by the playbook targeting
+  become: true # Required for package installation
+
+  tasks:
+    - name: Update package cache and install Apache
+      apt:
+        name: apache2
+        state: present
+        update_cache: yes # Ensure up-to-date package information
+
+# ---
+# - name: Installing Apache on server1
+#   hosts: apache
+#   become: true
+
+#   tasks:
+#     - name: Update package cache and install Apache
+#       apt:
+#         name: apache2
+#         state: latest
+#         update_cache: yes
+
+# - name: Installing Nginx on server2
+#   hosts: nginx
+#   become: true
+
+#   tasks:
+#     - name: Update package cache and install Nginx
+#       apt:
+#         name: nginx
+#         state: latest
+#         update_cache: yes

@@ -151,40 +151,91 @@ resource "google_compute_firewall" "rule" {
 
 
 
-# Ansible Code Block 
+# # Ansible Code Block 
+
+# locals {
+#   ssh_user         = "ankitraut0987"
+#   private_key_path = "dynatrace_ssh_key.pem"
+
+#   ip_addresses = {
+#     for idx, instance in module.compute_instance : 
+#     "server-${idx}" => [
+#       for instance_details in instance.instances_details : 
+#       instance_details.network_interface[0].network_ip
+#     ]
+#   }
+# }
+# resource "null_resource" "ansible_provisioner" {
+
+#   provisioner "remote-exec" {
+#     inline = ["echo 'Wait until SSH is ready'"]
+
+#     connection {
+#       type        = "ssh"
+#       user        = local.ssh_user
+#       private_key = file(local.private_key_path)
+#       host        = local.ip_addresses.server-dynatrace[0]
+#     }
+#   }
+#   provisioner "local-exec" {
+#     command = "ansible-inventory -i ${local.ip_addresses.server-dynatrace[0]} --list"
+#     # command = "ansible-playbook  -i ${aws_instance.nginx.public_ip}, --private-key ${local.private_key_path} nginx.yaml"
+#   }
+
+
+# }
+
+
+#Ansible using resources:
+
+#   ip_addresses = {
+#     for idx, instance in module.compute_instance :
+#     "server-${idx}" => [
+#       for instance_details in instance.instances_details :
+#       instance_details.network_interface[0].network_ip
+#     ]
+#   }
 
 locals {
   ssh_user         = "ankitraut0987"
   private_key_path = "dynatrace_ssh_key.pem"
 
   ip_addresses = {
-    for idx, instance in module.compute_instance : # Iterate over each instance in the compute_instance module
+    for idx, instance in module.compute_instance :
     "server-${idx}" => [
-      for instance_details in instance.instances_details : # Iterate over each instance's details
+      for instance_details in instance.instances_details :
       instance_details.network_interface[0].network_ip
     ]
   }
-}
-resource "null_resource" "ansible_provisioner" {
-
-  provisioner "remote-exec" {
-    inline = ["echo 'Wait until SSH is ready'"]
-
-    connection {
-      type        = "ssh"
-      user        = local.ssh_user
-      private_key = file(local.private_key_path)
-      host        = local.ip_addresses.server-dynatrace[0]
-    }
-  }
-  provisioner "local-exec" {
-    command = "ansible-inventory -i ${local.ip_addresses.server-dynatrace[0]} --list"
-    # command = "ansible-playbook  -i ${aws_instance.nginx.public_ip}, --private-key ${local.private_key_path} nginx.yaml"
-  }
-
 
 }
 
+resource "ansible_host" "dynatrace" {
+  name   = "server-dynatrace"
+  groups = [ansible_group.server_group.name]
+
+  variables = {
+    yaml_list = jsonencode(local.ip_addresses.server-dynatrace[0])
+  }
+}
+
+resource "ansible_group" "server_group" {
+  name     = "server_group"
+  children = ["server-dynatrace"]
+}
+
+resource "ansible_playbook" "playbook" {
+  playbook = "playbook.yml"
+  name     = "apache installation playbook"
+  # replayable = true
+  groups    = [ansible_group.server_group.name]
+  verbosity = 6
+}
+
+
+
+
+#NOT USEFULL
 
 # ---------------------------------------------------
 # module "instance_template" {
