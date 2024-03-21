@@ -183,11 +183,21 @@ locals {
 output "testing" {
   value = local.ip_addresses
 }
+# resource "null_resource" "ansible_inventory" {
+#   provisioner "local-exec" {
+#     command = <<EOT
+# cat <<EOF > inventory.ini
+# ${join("\n",[for key,val in local.ip_addresses:"[${key}]" ])}
+# EOF
+# EOT
+#   }
+# }
+
 resource "null_resource" "ansible_inventory" {
   provisioner "local-exec" {
     command = <<EOT
 cat <<EOF > inventory.ini
-${join([for key,val in local.ip_addresses:"[${key}]" ])}
+${join("\n", [for server_name, ips in local.ip_addresses : "[" + server_name + "]\n" + join("\n", [for ip in ips : ip + " ansible_host=" + ip])])}
 EOF
 EOT
   }
