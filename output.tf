@@ -15,15 +15,18 @@ output "addresses" {
     for idx, instance in module.compute_instance : # Iterate over each instance in the compute_instance module
     "server-${idx}" => [
       for instance_details in instance.instances_details : # Iterate over each instance's details
-      {
-        ip_address = instance_details.network_interface[0].network_ip
-        # instance_id = instance_details.id # Access the instance_id attribute
-        # zone        = instance_details.zone
-        # Add other attributes as needed
-      }
+      instance_details.network_interface[0].network_ip
     ]
   }
 }
+
+
+# + addresses = {
+#     + server-dynatrace = [
+#         + (known after apply),
+#         + (known after apply),
+#       ]
+#   }
 
 
 # # for external ip address:

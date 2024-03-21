@@ -151,6 +151,42 @@ resource "google_compute_firewall" "rule" {
 
 
 
+# Ansible Code Block 
+
+locals {
+  ssh_user         = "ankitraut0987"
+  private_key_path = "dynatrace_ssh_key.pem"
+
+  ip_addresses = {
+    for idx, instance in module.compute_instance : # Iterate over each instance in the compute_instance module
+    "server-${idx}" => [
+      for instance_details in instance.instances_details : # Iterate over each instance's details
+      instance_details.network_interface[0].network_ip
+    ]
+  }
+}
+resource "null_resource" "ansible_provisioner" {
+
+  provisioner "remote-exec" {
+    inline = ["echo 'Wait until SSH is ready'"]
+
+    connection {
+      type        = "ssh"
+      user        = local.ssh_user
+      private_key = file(local.private_key_path)
+      host        = local.ip_addresses.server-dynatrace
+    }
+  }
+  provisioner "local-exec" {
+    command = "ansible-inventory -i ${local.ip_addresses.server-dynatrace} --list"
+    # command = "ansible-playbook  -i ${aws_instance.nginx.public_ip}, --private-key ${local.private_key_path} nginx.yaml"
+  }
+
+
+}
+
+
+# ---------------------------------------------------
 # module "instance_template" {
 #   source             = "terraform-google-modules/vm/google//modules/instance_template"
 #   version            = "~>9.0.0"
