@@ -1,0 +1,49 @@
+# Application Configurations
+app:
+  name: vm # Application prefix name
+  env: labs # Environment name
+  os: linux
+  labels: # Labels of VM, which will use to filter instance at GCP ansible dynamic inventory
+    delete: false
+    env: labs
+
+# Project Configuration
+config:
+  project: proven-answer-414613
+  region: us-east4 # GCP Region                                      # GCP folder ID
+  org_id: "0" # GCP Organization ID
+
+# Network Configuration
+network:
+  project: proven-answer-414613 # The ID of the project in which the subnetwork belongs
+  vpc: default # VPC network name
+  subnet: default # The name of the subnetwork to attach this interface
+
+# VM Instance Configuratiosn
+server:
+  - name: dynatrace # VM Instance Name
+    labels: # Labels of VM, which will use to filter instance at GCP ansible dynamic inventory
+      owner: sniper
+      application: dynatrace
+
+    tags: # Network tag
+      - dynatrace
+
+    additional_ssh_allow_cidr: [] # Additional SSH firewall rule CIDR to allow IP's or CIDR ranges to ssh on VM instance
+
+    additional_service_account_roles: []
+
+    instance_config:
+      count: 2
+      machine_type: e2-standard-4 # Machine type to create
+      allow_stopping_for_update: true # If true, allows Terraform to stop the instance to update its properties
+      deletion_protection: false # If true, the instance cannot be deleted
+      source_image: centos-stream-8-v20221102 # Source disk image
+      root_disk_size: 500 # Root disk size in gb
+      root_disk_type: pd-ssd # Root disk type
+      gce_user: centos # SSH user
+      automatic_restart: true # Specifies whether the instance should be automatically restarted if its terminated by CE
+      additional_disk_name: disk-0 # Additional disk name
+      additional_disk_size: 500 # Additional disk size in gb
+      additional_disk_type: pd-standard # Additional disk type
+      os_type: linux
