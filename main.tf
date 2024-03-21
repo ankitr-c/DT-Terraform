@@ -154,13 +154,13 @@ resource "google_compute_firewall" "rule" {
 # # Ansible Code Block 
 
 locals {
-  ssh_user         = "ankitraut0987"
+  ssh_user         = "centos"
   private_key_path = "dynatrace_ssh_key.pem"
 
   ip_addresses = {
-    for idx, instance in module.compute_instance : 
+    for idx, instance in module.compute_instance :
     "server-${idx}" => [
-      for instance_details in instance.instances_details : 
+      for instance_details in instance.instances_details :
       instance_details.network_interface[0].network_ip
     ]
   }
@@ -171,16 +171,17 @@ resource "null_resource" "ansible_provisioner" {
     inline = ["echo 'Wait until SSH is ready'"]
 
     connection {
-      type        = "ssh"
-      user        = local.ssh_user
-      private_key = file(local.private_key_path)
+      type = "ssh"
+      user = local.ssh_user
+      # private_key = file(local.private_key_path)
+      private_key = tls_private_key.private_key_pair["dynatrace"].private_key_pem
       host        = local.ip_addresses.server-dynatrace[0]
     }
   }
-  provisioner "local-exec" {
-    command = "ansible-inventory -i ${local.ip_addresses.server-dynatrace[0]} --list"
-    # command = "ansible-playbook  -i ${aws_instance.nginx.public_ip}, --private-key ${local.private_key_path} nginx.yaml"
-  }
+  # provisioner "local-exec" {
+  #   command = "ansible-inventory -i ${local.ip_addresses.server-dynatrace[0]} --list"
+  #   # command = "ansible-playbook  -i ${aws_instance.nginx.public_ip}, --private-key ${local.private_key_path} nginx.yaml"
+  # }
 
 }
 
