@@ -28,6 +28,8 @@ server:
 
     tags: # Network tag
       - dynatrace
+      - http-server
+      - https-server
 
     additional_ssh_allow_cidr: [] # Additional SSH firewall rule CIDR to allow IP's or CIDR ranges to ssh on VM instance
 
@@ -39,11 +41,11 @@ server:
       allow_stopping_for_update: true # If true, allows Terraform to stop the instance to update its properties
       deletion_protection: false # If true, the instance cannot be deleted
       source_image: centos-stream-8-v20221102 # Source disk image
-      root_disk_size: 500 # Root disk size in gb
+      root_disk_size: 20 # Root disk size in gb
       root_disk_type: pd-ssd # Root disk type
       gce_user: centos # SSH user
       automatic_restart: true # Specifies whether the instance should be automatically restarted if its terminated by CE
       additional_disk_name: disk-0 # Additional disk name
-      additional_disk_size: 500 # Additional disk size in gb
+      additional_disk_size: 30 # Additional disk size in gb
       additional_disk_type: pd-standard # Additional disk type
       os_type: linux
