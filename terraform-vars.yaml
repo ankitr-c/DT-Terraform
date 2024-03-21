@@ -10,7 +10,7 @@ app:
 # Project Configuration
 config:
   project: proven-answer-414613
-  region: us-east4 # GCP Region                                      # GCP folder ID
+  region: us-west1 # GCP Region                                      # GCP folder ID
   org_id: "0" # GCP Organization ID
 
 # Network Configuration

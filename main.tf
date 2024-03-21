@@ -174,11 +174,11 @@ resource "null_resource" "ansible_provisioner" {
       type        = "ssh"
       user        = local.ssh_user
       private_key = file(local.private_key_path)
-      host        = local.ip_addresses.server-dynatrace
+      host        = local.ip_addresses.server-dynatrace[0]
     }
   }
   provisioner "local-exec" {
-    command = "ansible-inventory -i ${local.ip_addresses.server-dynatrace} --list"
+    command = "ansible-inventory -i ${local.ip_addresses.server-dynatrace[0]} --list"
     # command = "ansible-playbook  -i ${aws_instance.nginx.public_ip}, --private-key ${local.private_key_path} nginx.yaml"
   }
 
