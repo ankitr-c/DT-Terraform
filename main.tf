@@ -186,6 +186,7 @@ resource "null_resource" "ansible_instances_connection_check" {
 }
 
 resource "null_resource" "ansible_playbook_runner" {
+  depends_on = [null_resource.ansible_instances_connection_check]
   provisioner "local-exec" {
     command = "ansible-inventory -i inventory.ini --list"
     #   #   # command = "ansible-playbook  -i ${aws_instance.nginx.public_ip}, --private-key ${local.private_key_path} nginx.yaml"
