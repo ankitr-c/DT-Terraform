@@ -1,0 +1,64 @@
+
+################VARIABLES-PLAY###################
+
+
+# locals {
+#   server_key_mapping_list = [
+#     for network_ip, ssh_key in local.server_key_mapping : {
+#       network_ip = ssh_key
+#     }
+#   ]
+# }
+
+
+
+# locals {
+#   server_key_mapping = merge([
+#     for idx, instance in module.compute_instance :
+#     {
+#       for instance_details in instance.instances_details :
+#       "${instance_details.network_interface[0].network_ip}" => "${idx}"
+#     }
+#   ]...)
+#   server_key_mapping_list = [
+#     for network_ip, ssh_key in local.server_key_mapping : {
+#       "${network_ip}" = "${ssh_key}"
+#     }
+#   ]
+# }
+
+# locals {
+#   server_key_mapping_list_2 = flatten([
+#     for idx, instance in module.compute_instance :
+#     [
+#       for instance_details in instance.instances_details :
+#       {
+#         "${instance_details.network_interface[0].network_ip}" = "${idx}"
+#       }
+#     ]
+#   ])
+# }
+
+# output "server_key_mapping" {
+#   value = local.server_key_mapping
+# }
+
+# output "list_mapping1" {
+#   value = local.server_key_mapping_list
+# }
+
+# output "list_mapping2" {
+#   value = local.server_key_mapping_list_2
+# }
+
+# output "key" {
+#   value = local.server_key_mapping_list_2[0].keys[0]
+# }
+
+# output "value" {
+#   value = local.server_key_mapping_list_2[0].value[0]
+# }
+
+# output "length" {
+#   value = length(local.server_key_mapping_list_2)
+# }

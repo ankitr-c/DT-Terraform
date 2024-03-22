@@ -161,77 +161,33 @@ EOT
   }
 }
 
-locals {
-  server_key_mapping = merge([
-    for idx, instance in module.compute_instance :
-    {
-      for instance_details in instance.instances_details :
-      "${instance_details.network_interface[0].network_ip}" => "${idx}"
-    }
-  ]...)
-  server_key_mapping_list = [
-    for network_ip, ssh_key in local.server_key_mapping : {
-      "${network_ip}" = "${ssh_key}"
-    }
-  ]
-}
 
 locals {
-  server_key_mapping_list_2 = flatten([
-    for idx, instance in module.compute_instance :
-    [
-      for instance_details in instance.instances_details :
-      {
-        "${instance_details.network_interface[0].network_ip}" = "${idx}"
-      }
+  server_key_mapping = {
+    for server_name, vm_info in module.compute_instance :
+    server_name => [
+      for instance_details in vm_info.instances_details :
+      instance_details.network_interface[0].network_ip
     ]
-  ])
+  }
 }
 
-output "server_key_mapping" {
+output "vm_info" {
   value = local.server_key_mapping
 }
 
-output "list_mapping1" {
-  value = local.server_key_mapping_list
+resource "null_resource" "ansible_provisioner" {
+  for_each = local.server_key_mapping
+  provisioner "remote-exec" {
+    inline = ["echo 'Wait until SSH is ready'"]
+    connection {
+      type        = "ssh"
+      user        = "centos"
+      private_key = tls_private_key.private_key_pair[each.key].private_key_pem
+      host        = each.value[0]
+    }
+  }
 }
-
-output "list_mapping2" {
-  value = local.server_key_mapping_list_2
-}
-
-# locals {
-#   server_key_mapping_list = [
-#     for network_ip, ssh_key in local.server_key_mapping : {
-#       network_ip = ssh_key
-#     }
-#   ]
-# }
-
-
-# resource "null_resource" "server_key_mapping_trigger" {
-#   triggers = {
-#     server_key_mapping = jsonencode(local.server_key_mapping)
-#   }
-# }
-
-# resource "null_resource" "ansible_provisioner" {
-#   depends_on = [null_resource.server_key_mapping_trigger]
-#   # depends_on = [module.compute_instance, module.service_accounts]
-#   # triggers = {
-#   #   server_key_mapping = jsonencode(local.server_key_mapping)
-#   # }
-#   for_each = local.server_key_mapping
-#   provisioner "remote-exec" {
-#     inline = ["echo 'Wait until SSH is ready'"]
-#     connection {
-#       type        = "ssh"
-#       user        = "centos"
-#       private_key = tls_private_key.private_key_pair[each.value].private_key_pem
-#       host        = each.key
-#     }
-#   }
-# }
 
 
 
@@ -457,4 +413,3 @@ output "list_mapping2" {
 #   filename        = "${path.module}/${each.value.name}_ssh_key.pem"
 #   file_permission = "0600"
 # }
-
