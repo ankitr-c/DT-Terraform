@@ -191,7 +191,7 @@ resource "null_resource" "ansible_playbook_runner" {
   provisioner "local-exec" {
     # command = "ansible-inventory -i inventory.ini --list"
     # command = "ansible-playbook  -i inventory.ini, --private-key ${tls_private_key.private_key_pair[each.key].private_key_pem} ${each.key}-playbook.yml"
-    command = "ansible-playbook  -i inventory.ini, -u centos --private-key ${each.key}_ssh_key.pem ${each.key}-playbook.yml"
+    command = "ansible-playbook  -i inventory.ini -u centos --private-key ${each.key}_ssh_key.pem ${each.key}-playbook.yml"
 
     # ${each.value.name}_ssh_key.pem
   }
