@@ -183,6 +183,18 @@ locals {
 output "testing" {
   value = local.ip_addresses
 }
+
+
+resource "null_resource" "ansible_inventory" {
+  provisioner "local-exec" {
+    command = <<EOT
+cat <<EOF > inventory.ini
+${join("\n", [for key, val in local.ip_addresses : "[${key}]\n ${join("\n", [for sn, ip in val : "${sn} ansible_host=${ip}"])}"])}
+EOF
+EOT
+  }
+}
+
 # resource "null_resource" "ansible_inventory" {
 #   provisioner "local-exec" {
 #     command = <<EOT
@@ -193,15 +205,25 @@ output "testing" {
 #   }
 # }
 
-resource "null_resource" "ansible_inventory" {
-  provisioner "local-exec" {
-    command = <<EOT
-cat <<EOF > inventory.ini
-${join("\n", [for server_name, ips in local.ip_addresses : "[" + server_name + "]\n" + join("\n", [for ip in ips : ip + " ansible_host=" + ip])])}
-EOF
-EOT
-  }
-}
+# resource "null_resource" "ansible_inventory" {
+#   provisioner "local-exec" {
+#     command = <<EOT
+# cat <<EOF > inventory.ini
+# ${join("\n", [for server_name, ips in local.ip_addresses : "[" + server_name + "]\n" + join("\n", [for ip in ips : ip + " ansible_host=" + ip])])}
+# EOF
+# EOT
+#   }
+# }
+
+# resource "null_resource" "ansible_inventory" {
+#   provisioner "local-exec" {
+#     command = <<EOT
+# cat <<EOF > inventory.ini
+# ${join("\n", [for server_name, ips in local.ip_addresses : tostring( "[" + server_name + "]\n") + tostring(join("\n", [for ip in ips : ip + " ansible_host=" + ip]))])}
+# EOF
+# EOT
+#   }
+# }
 
 
 #######
