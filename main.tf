@@ -167,63 +167,44 @@ resource "google_compute_firewall" "rule" {
 
 #################
 ##Map for inventory file
-locals {
-  ssh_user = "centos"
+# locals {
+#   ssh_user = "centos"
 
-  ip_addresses = {
-    for idx, instance in module.compute_instance :
-    "server-${idx}" => {
-      for instance_details in instance.instances_details :
-      instance_details.name => instance_details.network_interface[0].network_ip
-    }
-  }
-}
-#################
+#   ip_addresses = {
+#     for idx, instance in module.compute_instance :
+#     "${idx}" => {
+#       for instance_details in instance.instances_details :
+#       instance_details.name => instance_details.network_interface[0].network_ip
+#     }
+#   }
+# }
+# #################
 
-output "testing" {
-  value = local.ip_addresses
-}
+# output "testing" {
+#   value = local.ip_addresses
+# }
 
+
+# resource "null_resource" "ansible_inventory" {
+#   provisioner "local-exec" {
+#     command = <<EOT
+# cat <<EOF > inventory.ini
+# ${join("\n", [for key, val in local.ip_addresses : "[${key}]\n${join("\n", [for sn, ip in val : "${sn} ansible_host=${ip}"])}"])}
+# EOF
+# EOT
+#   }
+# }
 
 resource "null_resource" "ansible_inventory" {
   provisioner "local-exec" {
     command = <<EOT
 cat <<EOF > inventory.ini
-${join("\n", [for key, val in local.ip_addresses : "[${key}]\n ${join("\n", [for sn, ip in val : "${sn} ansible_host=${ip}"])}"])}
+${join("\n", [for server-name, data in module.compute_instance : "[${server-name}]\n${join("\n", [for instance in data : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}"])}
 EOF
 EOT
   }
 }
 
-# resource "null_resource" "ansible_inventory" {
-#   provisioner "local-exec" {
-#     command = <<EOT
-# cat <<EOF > inventory.ini
-# ${join("\n",[for key,val in local.ip_addresses:"[${key}]" ])}
-# EOF
-# EOT
-#   }
-# }
-
-# resource "null_resource" "ansible_inventory" {
-#   provisioner "local-exec" {
-#     command = <<EOT
-# cat <<EOF > inventory.ini
-# ${join("\n", [for server_name, ips in local.ip_addresses : "[" + server_name + "]\n" + join("\n", [for ip in ips : ip + " ansible_host=" + ip])])}
-# EOF
-# EOT
-#   }
-# }
-
-# resource "null_resource" "ansible_inventory" {
-#   provisioner "local-exec" {
-#     command = <<EOT
-# cat <<EOF > inventory.ini
-# ${join("\n", [for server_name, ips in local.ip_addresses : tostring( "[" + server_name + "]\n") + tostring(join("\n", [for ip in ips : ip + " ansible_host=" + ip]))])}
-# EOF
-# EOT
-#   }
-# }
 
 
 #######

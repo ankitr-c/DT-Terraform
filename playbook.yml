@@ -1,13 +1,13 @@
 ---
 - name: Installing Apache
-  hosts: all # Matched by the playbook targeting
+  hosts: dynatrace # Matched by the playbook targeting
   become: true # Required for package installation
 
   tasks:
     - name: Update package cache and install Apache
       apt:
         name: apache2
-        state: present
+        state: latest
         update_cache: yes # Ensure up-to-date package information
 
 # ---
