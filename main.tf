@@ -187,9 +187,13 @@ resource "null_resource" "ansible_instances_connection_check" {
 
 resource "null_resource" "ansible_playbook_runner" {
   depends_on = [null_resource.ansible_instances_connection_check]
+  for_each   = local.server_key_mapping
   provisioner "local-exec" {
-    command = "ansible-inventory -i inventory.ini --list"
-    #   #   # command = "ansible-playbook  -i ${aws_instance.nginx.public_ip}, --private-key ${local.private_key_path} nginx.yaml"
+    # command = "ansible-inventory -i inventory.ini --list"
+    command = "ansible-playbook  -i inventory.ini, --private-key ${tls_private_key.private_key_pair[each.key].private_key_pem} ${each.key}-playbook.yml"
+    # command = "ansible-playbook  -i inventory.ini, --private-key ${each.value.name}_ssh_key.pem ${each.value.name}-playbook.yml"
+
+    # ${each.value.name}_ssh_key.pem
   }
 }
 
