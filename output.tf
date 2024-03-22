@@ -1,7 +1,7 @@
 
-output "server_key_mapping" {
-  value = local.server_key_mapping
-}
+# output "server_key_mapping" {
+#   value = local.server_key_mapping
+# }
 
 
 

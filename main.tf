@@ -166,22 +166,48 @@ locals {
     for idx, instance in module.compute_instance :
     {
       for instance_details in instance.instances_details :
-      instance_details.network_interface[0].network_ip => idx
+      "${instance_details.network_interface[0].network_ip}" => "${idx}"
     }
   ]...)
-}
-locals {
   server_key_mapping_list = [
-    for network_ip, idx in local.server_key_mapping : {
-      network_ip = network_ip
-      idx        = idx
+    for network_ip, ssh_key in local.server_key_mapping : {
+      "${network_ip}" = "${ssh_key}"
     }
   ]
 }
 
-output "list_mapping" {
+locals {
+  server_key_mapping_list_2 = flatten([
+    for idx, instance in module.compute_instance :
+    [
+      for instance_details in instance.instances_details :
+      {
+        "${instance_details.network_interface[0].network_ip}" = "${idx}"
+      }
+    ]
+  ])
+}
+
+output "server_key_mapping" {
+  value = local.server_key_mapping
+}
+
+output "list_mapping1" {
   value = local.server_key_mapping_list
 }
+
+output "list_mapping2" {
+  value = local.server_key_mapping_list_2
+}
+
+# locals {
+#   server_key_mapping_list = [
+#     for network_ip, ssh_key in local.server_key_mapping : {
+#       network_ip = ssh_key
+#     }
+#   ]
+# }
+
 
 # resource "null_resource" "server_key_mapping_trigger" {
 #   triggers = {
