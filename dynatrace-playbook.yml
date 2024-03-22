@@ -5,11 +5,10 @@
 
   tasks:
     - name: Update package cache and install Apache
-      apt:
-        name: apache2
+      yum:
+        name: httpd
         state: latest
-        update_cache: yes # Ensure up-to-date package information
-
+        #update_cache: yes # Ensure up-to-date package information
 # ---
 # - name: Installing Apache on server1
 #   hosts: apache
