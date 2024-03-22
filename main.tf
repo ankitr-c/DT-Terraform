@@ -172,11 +172,7 @@ locals {
   }
 }
 
-output "vm_info" {
-  value = local.server_key_mapping
-}
-
-resource "null_resource" "ansible_provisioner" {
+resource "null_resource" "ansible_instances_connection_check" {
   for_each = local.server_key_mapping
   provisioner "remote-exec" {
     inline = ["echo 'Wait until SSH is ready'"]
@@ -186,6 +182,13 @@ resource "null_resource" "ansible_provisioner" {
       private_key = tls_private_key.private_key_pair[each.key].private_key_pem
       host        = each.value[0]
     }
+  }
+}
+
+resource "null_resource" "ansible_playbook_runner" {
+  provisioner "local-exec" {
+    command = "ansible-inventory -i ${local.ip_addresses.server-dynatrace[0]} --list"
+    #   #   # command = "ansible-playbook  -i ${aws_instance.nginx.public_ip}, --private-key ${local.private_key_path} nginx.yaml"
   }
 }
 

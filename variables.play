@@ -2,6 +2,19 @@
 ################VARIABLES-PLAY###################
 
 
+
+# # for internal ip address
+# output "addresses" {
+#   value = {
+#     for idx, instance in module.compute_instance : # Iterate over each instance in the compute_instance module
+#     "server-${idx}" => [
+#       for instance_details in instance.instances_details : # Iterate over each instance's details
+#       instance_details.network_interface[0].network_ip
+#     ]
+#   }
+# }
+
+
 # locals {
 #   server_key_mapping_list = [
 #     for network_ip, ssh_key in local.server_key_mapping : {
