@@ -132,6 +132,7 @@ resource "local_sensitive_file" "ssh_key" {
 locals {
   default_allow_cidr = ["192.168.5.0/24"]
 }
+
 resource "google_compute_firewall" "rule" {
   for_each      = var.app.os == "linux" ? local.servers : {}
   name          = "${var.app.env}-${each.key}-ssh"
@@ -150,7 +151,7 @@ resource "google_compute_firewall" "rule" {
 }
 
 
-resource "null_resource" "ansible_inventory" {
+resource "null_resource" "ansible_inventory_creator" {
   provisioner "local-exec" {
     command = <<EOT
 cat <<EOF > inventory.ini
@@ -159,6 +160,32 @@ EOF
 EOT
   }
 }
+
+locals {
+  server_key_mapping = merge([
+    for idx, instance in module.compute_instance :
+    {
+      for instance_details in instance.instances_details :
+      instance_details.network_interface[0].network_ip => idx
+    }
+  ]...)
+}
+
+
+resource "null_resource" "ansible_provisioner" {
+  for_each = local.server_key_mapping
+  provisioner "remote-exec" {
+    inline = ["echo 'Wait until SSH is ready'"]
+    connection {
+      type        = "ssh"
+      user        = "centos"
+      private_key = tls_private_key.private_key_pair[each.value].private_key_pem
+      host        = each.key
+    }
+  }
+}
+
+
 
 # locals {
 #   server_key_mapping = {
@@ -174,29 +201,7 @@ EOT
 #   value = local.server_key_mapping
 # }
 
-locals {
-  server_key_mapping = merge([
-    for idx, instance in module.compute_instance :
-    {
-      for instance_details in instance.instances_details :
-      instance_details.network_interface[0].network_ip => idx
-    }
-  ]...)
 
-  test = [for idx, instance in module.compute_instance :
-    {
-      for instance_details in instance.instances_details :
-      instance_details.network_interface[0].network_ip => idx
-  }]
-}
-
-output "server_key_mapping" {
-  value = local.server_key_mapping
-}
-
-output "test" {
-  value = local.test
-}
 # resource "null_resource" "ansible_provisioner" {
 
 #   provisioner "remote-exec" {
