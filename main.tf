@@ -187,7 +187,7 @@ resource "null_resource" "ansible_instances_connection_check" {
 
 resource "null_resource" "ansible_playbook_runner" {
   provisioner "local-exec" {
-    command = "ansible-inventory -i ${local.ip_addresses.server-dynatrace[0]} --list"
+    command = "ansible-inventory -i inventory.ini --list"
     #   #   # command = "ansible-playbook  -i ${aws_instance.nginx.public_ip}, --private-key ${local.private_key_path} nginx.yaml"
   }
 }
