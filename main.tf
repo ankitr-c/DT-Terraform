@@ -170,20 +170,42 @@ locals {
     }
   ]...)
 }
-
-
-resource "null_resource" "ansible_provisioner" {
-  for_each = local.server_key_mapping
-  provisioner "remote-exec" {
-    inline = ["echo 'Wait until SSH is ready'"]
-    connection {
-      type        = "ssh"
-      user        = "centos"
-      private_key = tls_private_key.private_key_pair[each.value].private_key_pem
-      host        = each.key
+locals {
+  server_key_mapping_list = [
+    for network_ip, idx in local.server_key_mapping : {
+      network_ip = network_ip
+      idx        = idx
     }
-  }
+  ]
 }
+
+output "list_mapping" {
+  value = local.server_key_mapping_list
+}
+
+# resource "null_resource" "server_key_mapping_trigger" {
+#   triggers = {
+#     server_key_mapping = jsonencode(local.server_key_mapping)
+#   }
+# }
+
+# resource "null_resource" "ansible_provisioner" {
+#   depends_on = [null_resource.server_key_mapping_trigger]
+#   # depends_on = [module.compute_instance, module.service_accounts]
+#   # triggers = {
+#   #   server_key_mapping = jsonencode(local.server_key_mapping)
+#   # }
+#   for_each = local.server_key_mapping
+#   provisioner "remote-exec" {
+#     inline = ["echo 'Wait until SSH is ready'"]
+#     connection {
+#       type        = "ssh"
+#       user        = "centos"
+#       private_key = tls_private_key.private_key_pair[each.value].private_key_pem
+#       host        = each.key
+#     }
+#   }
+# }
 
 
 
