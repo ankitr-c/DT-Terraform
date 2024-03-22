@@ -150,19 +150,85 @@ resource "google_compute_firewall" "rule" {
 }
 
 
+resource "null_resource" "ansible_inventory" {
+  provisioner "local-exec" {
+    command = <<EOT
+cat <<EOF > inventory.ini
+${join("\n", [for server_name, data in module.compute_instance : "[${server_name}]\n${join("\n", [for instance in data.instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}"])}
+EOF
+EOT
+  }
+}
+
+# locals {
+#   server_key_mapping = {
+#     for idx, instance in module.compute_instance :
+#     idx => {
+#       for instance_details in instance.instances_details :
+#       idx => instance_details.network_interface[0].network_ip
+#     }
+#   }
+# }
+
+# output "server_key_mapping" {
+#   value = local.server_key_mapping
+# }
+
+locals {
+  server_key_mapping = merge([
+    for idx, instance in module.compute_instance :
+    {
+      for instance_details in instance.instances_details :
+      instance_details.network_interface[0].network_ip => idx
+    }
+  ]...)
+
+  test = [for idx, instance in module.compute_instance :
+    {
+      for instance_details in instance.instances_details :
+      instance_details.network_interface[0].network_ip => idx
+  }]
+}
+
+output "server_key_mapping" {
+  value = local.server_key_mapping
+}
+
+output "test" {
+  value = local.test
+}
+# resource "null_resource" "ansible_provisioner" {
+
+#   provisioner "remote-exec" {
+#     inline = ["echo 'Wait until SSH is ready'"]
+
+#     connection {
+#       type = "ssh"
+#       user = local.ssh_user
+#       private_key = tls_private_key.private_key_pair["dynatrace"].private_key_pem
+#       host        = local.ip_addresses.server-dynatrace[0]
+#     }
+#   }
+#   # provisioner "local-exec" {
+#   #   command = "ansible-inventory -i ${local.ip_addresses.server-dynatrace[0]} --list"
+#   #   # command = "ansible-playbook  -i ${aws_instance.nginx.public_ip}, --private-key ${local.private_key_path} nginx.yaml"
+#   # }
+
+# }
+
 
 # # Ansible Code Block 
 
 # locals {
 #   ssh_user         = "centos"
 
-#   ip_addresses = {
-#     for idx, instance in module.compute_instance :
-#     "server-${idx}" => [
-#       for instance_details in instance.instances_details :
-#       instance_details.network_interface[0].network_ip
-#     ]
-#   }
+# ip_addresses = {
+#   for idx, instance in module.compute_instance :
+#   "server-${idx}" => [
+#     for instance_details in instance.instances_details :
+#     instance_details.network_interface[0].network_ip
+#   ]
+# }
 # }
 
 #################
@@ -185,6 +251,20 @@ resource "google_compute_firewall" "rule" {
 # }
 
 
+
+# --------------------safe------------------------
+# locals {
+#   ssh_user = "centos"
+
+#   ip_addresses = {
+#     for idx, instance in module.compute_instance :
+#     "${idx}" => {
+#       for instance_details in instance.instances_details :
+#       instance_details.name => instance_details.network_interface[0].network_ip
+#     }
+#   }
+# }
+
 # resource "null_resource" "ansible_inventory" {
 #   provisioner "local-exec" {
 #     command = <<EOT
@@ -194,16 +274,8 @@ resource "google_compute_firewall" "rule" {
 # EOT
 #   }
 # }
+# --------------------safe------------------------
 
-resource "null_resource" "ansible_inventory" {
-  provisioner "local-exec" {
-    command = <<EOT
-cat <<EOF > inventory.ini
-${join("\n", [for server-name, data in module.compute_instance : "[${server-name}]\n${join("\n", [for instance in data : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}"])}
-EOF
-EOT
-  }
-}
 
 
 
