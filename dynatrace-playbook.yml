@@ -9,6 +9,12 @@
         name: httpd
         state: latest
         #update_cache: yes # Ensure up-to-date package information
+
+    - name: Start Apache HTTP server
+      service:
+        name: httpd
+        state: started
+        enabled: yes
 # ---
 # - name: Installing Apache on server1
 #   hosts: apache
