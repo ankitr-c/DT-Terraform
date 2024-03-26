@@ -238,11 +238,15 @@ resource "ansible_group" "group" {
   name     = each.key
 }
 
+output "grp" {
+  value = ansible_group.group["dynatrace"]
+}
 
 resource "ansible_playbook" "playbook" {
   for_each  = local.server_key_mapping
   playbook  = "${each.key}-playbook.yml"
   name      = each.key
+  groups    = ["dynatrace"]
   verbosity = 6
 }
 
