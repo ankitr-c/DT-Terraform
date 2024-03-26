@@ -230,7 +230,7 @@ resource "ansible_host" "hosts" {
   variables = {
     ansible_user                 = "centos",
     ansible_ssh_private_key_file = "${local.instances[count.index][0]}_ssh_key.pem",
-    # ansible_python_interpreter   = "/usr/bin/python3"
+    ansible_python_interpreter   = "/usr/bin/python3"
   }
 }
 resource "ansible_group" "group" {
@@ -238,19 +238,21 @@ resource "ansible_group" "group" {
   name     = each.key
 }
 
+
+resource "ansible_playbook" "playbook" {
+  for_each  = local.server_key_mapping
+  playbook  = "${each.key}-playbook.yml"
+  name      = each.key
+  verbosity = 6
+}
+
+
 # resource "ansible_playbook" "playbook" {
 #   # count     = length(local.instances)
 #   playbook  = "${local.instances[0][0]}-playbook.yml"
 #   name      = local.instances[0][1]
 #   verbosity = 6
 # }
-
-resource "ansible_playbook" "playbook" {
-  for_each  = local.server_key_mapping
-  playbook  = "${each.key}-playbook.yml"
-  name      = local.instances[0][1]
-  verbosity = 6
-}
 
 ####################################
 
