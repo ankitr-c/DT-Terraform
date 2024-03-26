@@ -239,7 +239,11 @@ resource "ansible_group" "group" {
 }
 
 output "grp" {
-  value = ansible_group.group["dynatrace"]
+  value = ansible_group.group
+}
+
+output "host" {
+  value = ansible_host.hosts
 }
 
 resource "ansible_playbook" "playbook" {
