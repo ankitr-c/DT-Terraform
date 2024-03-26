@@ -243,11 +243,12 @@ output "grp" {
 }
 
 resource "ansible_playbook" "playbook" {
-  for_each  = local.server_key_mapping
-  playbook  = "${each.key}-playbook.yml"
-  name      = each.key
-  groups    = ["dynatrace"]
-  verbosity = 6
+  for_each   = local.server_key_mapping
+  playbook   = "${each.key}-playbook.yml"
+  name       = each.key
+  groups     = ["dynatrace"]
+  verbosity  = 6
+  replayable = true
   extra_vars = {
     hostname = local.instances[0][1]
   }
