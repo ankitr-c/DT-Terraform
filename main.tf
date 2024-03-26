@@ -248,6 +248,9 @@ resource "ansible_playbook" "playbook" {
   name      = each.key
   groups    = ["dynatrace"]
   verbosity = 6
+  extra_vars = {
+    hostname = local.instances[0][1]
+  }
 }
 
 
