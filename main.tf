@@ -239,9 +239,9 @@ resource "ansible_group" "group" {
 }
 
 resource "ansible_playbook" "playbook" {
-  count     = length(local.instances)
-  playbook  = "${local.instances[count.index][0]}-playbook.yml"
-  name      = local.instances[count.index][1]
+  # count     = length(local.instances)
+  playbook  = "${local.instances[0][0]}-playbook.yml"
+  name      = local.instances[0][1]
   verbosity = 6
 }
 
