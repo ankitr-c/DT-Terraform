@@ -238,13 +238,19 @@ resource "ansible_group" "group" {
   name     = each.key
 }
 
+# resource "ansible_playbook" "playbook" {
+#   # count     = length(local.instances)
+#   playbook  = "${local.instances[0][0]}-playbook.yml"
+#   name      = local.instances[0][1]
+#   verbosity = 6
+# }
+
 resource "ansible_playbook" "playbook" {
-  # count     = length(local.instances)
-  playbook  = "${local.instances[0][0]}-playbook.yml"
-  name      = local.instances[0][1]
+  for_each  = local.server_key_mapping
+  playbook  = "${each.key}-playbook.yml"
+  name      = each.key
   verbosity = 6
 }
-
 
 ####################################
 
