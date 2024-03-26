@@ -248,7 +248,7 @@ resource "ansible_group" "group" {
 resource "ansible_playbook" "playbook" {
   for_each  = local.server_key_mapping
   playbook  = "${each.key}-playbook.yml"
-  name      = each.key
+  name      = local.instances[0][1]
   verbosity = 6
 }
 
