@@ -172,6 +172,22 @@ locals {
   }
 }
 
+locals {
+  instances = [
+    for server_name, vm_info in module.compute_instance :
+    [
+      for instance_details in vm_info.instances_details :
+      [server_name, instance_details.network_interface[0].network_ip
+      ]
+    ]
+  ]
+}
+
+output "name" {
+  value = local.instances
+}
+
+
 resource "null_resource" "ansible_instances_connection_check" {
   for_each = local.server_key_mapping
   provisioner "remote-exec" {
@@ -196,6 +212,10 @@ resource "null_resource" "ansible_playbook_runner" {
     # ${each.value.name}_ssh_key.pem
   }
 }
+
+####$$$$$ ABOVE IS WORKING $$$$$####
+
+
 
 
 
