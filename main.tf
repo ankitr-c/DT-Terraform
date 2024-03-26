@@ -172,14 +172,37 @@ locals {
   }
 }
 
+# resource "null_resource" "ansible_instances_connection_check" {
+#   for_each = local.server_key_mapping
+#   provisioner "remote-exec" {
+#     inline = ["echo 'Wait until SSH is ready'"]
+#     connection {
+#       type        = "ssh"
+#       user        = "centos"
+#       private_key = tls_private_key.private_key_pair[each.key].private_key_pem
+#       host        = each.value[0]
+#     }
+#   }
+# }
+
+
+# resource "null_resource" "ansible_playbook_runner" {
+#   depends_on = [null_resource.ansible_instances_connection_check]
+#   for_each   = local.server_key_mapping
+#   provisioner "local-exec" {
+#     command = "ansible-playbook  -i inventory.ini -u centos --private-key ${each.key}_ssh_key.pem ${each.key}-playbook.yml"
+#   }
+# }
+
+####$$$$$ ABOVE IS WORKING $$$$$####
 locals {
   instances = [
     for server_name, vm_info in module.compute_instance :
-    [
-      for instance_details in vm_info.instances_details :
-      [server_name, instance_details.network_interface[0].network_ip
-      ]
-    ]
+    flatten(
+      [
+        for instance_details in vm_info.instances_details :
+        [server_name, instance_details.network_interface[0].network_ip]
+    ]...)
   ]
 }
 
@@ -187,35 +210,43 @@ output "name" {
   value = local.instances
 }
 
-
 resource "null_resource" "ansible_instances_connection_check" {
-  for_each = local.server_key_mapping
+  count = length(local.instances)
   provisioner "remote-exec" {
     inline = ["echo 'Wait until SSH is ready'"]
     connection {
       type        = "ssh"
       user        = "centos"
-      private_key = tls_private_key.private_key_pair[each.key].private_key_pem
-      host        = each.value[0]
+      private_key = tls_private_key.private_key_pair[local.instances[count.index][0]].private_key_pem
+      host        = local.instances[count.index][1]
     }
   }
 }
 
-resource "null_resource" "ansible_playbook_runner" {
-  depends_on = [null_resource.ansible_instances_connection_check]
-  for_each   = local.server_key_mapping
-  provisioner "local-exec" {
-    # command = "ansible-inventory -i inventory.ini --list"
-    # command = "ansible-playbook  -i inventory.ini, --private-key ${tls_private_key.private_key_pair[each.key].private_key_pem} ${each.key}-playbook.yml"
-    command = "ansible-playbook  -i inventory.ini -u centos --private-key ${each.key}_ssh_key.pem ${each.key}-playbook.yml"
-
-    # ${each.value.name}_ssh_key.pem
+resource "ansible_host" "hosts" {
+  count  = length(local.instances)
+  name   = local.instances[count.index][1]
+  groups = [local.instances[count.index][0]]
+  variables = {
+    ansible_user                 = "centos",
+    ansible_ssh_private_key_file = "${local.instances[count.index][0]}_ssh_key.pem",
+    # ansible_python_interpreter   = "/usr/bin/python3"
   }
 }
+resource "ansible_group" "group" {
+  for_each = local.server_key_mapping
+  name     = each.key
+}
 
-####$$$$$ ABOVE IS WORKING $$$$$####
+resource "ansible_playbook" "playbook" {
+  for_each  = local.server_key_mapping
+  playbook  = "${each.key}-playbook.yml"
+  name      = each.key
+  verbosity = 6 
+}
 
 
+####################################
 
 
 

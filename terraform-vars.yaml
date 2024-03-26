@@ -9,13 +9,13 @@ app:
 
 # Project Configuration
 config:
-  project: proven-answer-414613
+  project: clear-network-418110
   region: us-west1 # GCP Region                                      # GCP folder ID
   org_id: "0" # GCP Organization ID
 
 # Network Configuration
 network:
-  project: proven-answer-414613 # The ID of the project in which the subnetwork belongs
+  project: clear-network-418110 # The ID of the project in which the subnetwork belongs
   vpc: default # VPC network name
   subnet: default # The name of the subnetwork to attach this interface
 
