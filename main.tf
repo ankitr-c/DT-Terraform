@@ -223,26 +223,26 @@ resource "null_resource" "ansible_instances_connection_check" {
   }
 }
 
-resource "ansible_host" "hosts" {
-  count  = length(local.instances)
-  name   = local.instances[count.index][1]
-  groups = [local.instances[count.index][0]]
-  variables = {
-    ansible_user                 = "centos",
-    ansible_ssh_private_key_file = "${local.instances[count.index][0]}_ssh_key.pem",
-    # ansible_python_interpreter   = "/usr/bin/python3"
-  }
-}
-resource "ansible_group" "group" {
-  for_each = local.server_key_mapping
-  name     = each.key
-}
+# resource "ansible_host" "hosts" {
+#   count  = length(local.instances)
+#   name   = local.instances[count.index][1]
+#   groups = [local.instances[count.index][0]]
+#   variables = {
+#     ansible_user                 = "centos",
+#     ansible_ssh_private_key_file = "${local.instances[count.index][0]}_ssh_key.pem",
+#     # ansible_python_interpreter   = "/usr/bin/python3"
+#   }
+# }
+# resource "ansible_group" "group" {
+#   for_each = local.server_key_mapping
+#   name     = each.key
+# }
 
 resource "ansible_playbook" "playbook" {
-  for_each  = local.server_key_mapping
-  playbook  = "${each.key}-playbook.yml"
-  name      = each.key
-  verbosity = 6 
+  count     = length(local.instances)
+  playbook  = "${local.instances[count.index][0]}-playbook.yml"
+  name      = local.instances[count.index][1]
+  verbosity = 6
 }
 
 
