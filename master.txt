@@ -1,0 +1,14 @@
+provisioner "ansible" {
+  plays {
+    playbook {
+      file_path  = "${path.module}/../ansible-data/playbooks/install-tree.yml"
+      roles_path = ["${path.module}/../ansible-data/roles"]
+    }
+    hosts = ["testBoxToBootstrap", "anotherHost"]  # Pass multiple hosts here
+  }
+  ansible_ssh_settings {
+    insecure_no_strict_host_key_checking = var.insecure_no_strict_host_key_checking
+    private_key = "/path/to/your/ssh/key.pem"  # Specify the path to your SSH private key
+    user = "your_ssh_user"  # Specify the SSH user
+  }
+}
