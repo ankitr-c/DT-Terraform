@@ -152,6 +152,10 @@ resource "google_compute_firewall" "rule" {
 
 
 resource "null_resource" "ansible_inventory_creator" {
+  triggers = {
+    always_run = "${timestamp()}"
+  }
+
   provisioner "local-exec" {
     command = <<EOT
 cat <<EOF > inventory.ini
@@ -173,6 +177,9 @@ locals {
 }
 
 resource "null_resource" "ansible_instances_connection_check" {
+  triggers = {
+    always_run = "${timestamp()}"
+  }
   for_each = local.server_key_mapping
   provisioner "remote-exec" {
     inline = ["echo 'Wait until SSH is ready'"]
@@ -187,6 +194,9 @@ resource "null_resource" "ansible_instances_connection_check" {
 
 
 resource "null_resource" "ansible_playbook_runner" {
+  triggers = {
+    always_run = "${timestamp()}"
+  }
   depends_on = [null_resource.ansible_instances_connection_check]
   for_each   = local.server_key_mapping
   provisioner "local-exec" {
