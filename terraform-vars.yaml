@@ -45,7 +45,7 @@ server:
       root_disk_type: pd-ssd # Root disk type
       gce_user: centos # SSH user
       automatic_restart: true # Specifies whether the instance should be automatically restarted if its terminated by CE
-      additional_disk_name: disk-0 # Additional disk name
+      additional_disk_name: disk-1 # Additional disk name
       additional_disk_size: 30 # Additional disk size in gb
       additional_disk_type: pd-standard # Additional disk type
       os_type: linux
