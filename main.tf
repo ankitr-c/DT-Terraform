@@ -165,16 +165,17 @@ EOT
   }
 }
 
-
+# 
 locals {
-  server_key_mapping = {
-    for server_name, vm_info in module.compute_instance :
-    server_name => [
-      for instance_details in vm_info.instances_details :
-      instance_details.network_interface[0].network_ip
-    ]
-  }
+  #   server_key_mapping = {
+  #     for server_name, vm_info in module.compute_instance :
+  #     server_name => [
+  #       for instance_details in vm_info.instances_details :
+  #       instance_details.network_interface[0].network_ip
+  #     ]
+  #   }
 
+  server_names = [for server_name, vm_info in module.compute_instance : server_name]
 
   all_vms = concat([
     for server_name, vm_info in module.compute_instance :
@@ -184,10 +185,6 @@ locals {
     ]
   ]...)
 
-}
-
-output "val" {
-  value = local.all_vms
 }
 
 
@@ -203,6 +200,19 @@ resource "null_resource" "ansible_instances_connection_check" {
     }
   }
 }
+
+resource "null_resource" "ansible_playbook_runner" {
+  triggers = {
+    always_run = "${timestamp()}"
+  }
+  depends_on = [null_resource.ansible_instances_connection_check]
+  # for_each   = local.server_key_mapping
+  count = length(local.server_names)
+  provisioner "local-exec" {
+    command = "ansible-playbook  -i inventory.ini -u centos --private-key ${local.server_names[count.index]}_ssh_key.pem ${local.server_names[count.index]}-playbook.yml"
+  }
+}
+
 # resource "null_resource" "ansible_instances_connection_check" {
 #   triggers = {
 #     always_run = "${timestamp()}"
@@ -220,16 +230,6 @@ resource "null_resource" "ansible_instances_connection_check" {
 # }
 
 
-resource "null_resource" "ansible_playbook_runner" {
-  triggers = {
-    always_run = "${timestamp()}"
-  }
-  depends_on = [null_resource.ansible_instances_connection_check]
-  for_each   = local.server_key_mapping
-  provisioner "local-exec" {
-    command = "ansible-playbook  -i inventory.ini -u centos --private-key ${each.key}_ssh_key.pem ${each.key}-playbook.yml"
-  }
-}
 
 ####$$$$$ ABOVE IS WORKING $$$$$####
 # locals {
