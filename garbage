@@ -1,0 +1,77 @@
+# locals {
+#   instances = [
+#     for server_name, vm_info in module.compute_instance :
+#     flatten([
+#       for instance_details in vm_info.instances_details :
+#       [server_name, instance_details.network_interface[0].network_ip]
+#     ])
+#   ]
+# }
+# locals {
+#   instances = [
+#     for server_name, vm_info in module.compute_instance :
+#     [
+#       for instance_details in vm_info.instances_details :
+#       [server_name, instance_details.network_interface[0].network_ip]
+#     ]
+#   ]
+# }
+
+locals {
+  instances = [
+    for server_name, vm_info in module.compute_instance :
+    [for instance_details in vm_info.instances_details : [server_name, instance_details.network_interface[0].network_ip]]
+  ]
+}
+
+
+
+locals {
+  instance2 = {
+    for server_name, vm_info in module.compute_instance :
+    server_name => [
+      for instance_details in vm_info.instances_details :
+      [server_name, instance_details.network_interface[0].network_ip]
+    ]
+  }
+
+}
+
+
+# locals {
+#   new_lt = [for key, val in local.instance2 : for ans in val: ans]
+
+# }
+locals {
+  new_lt = [for key, val in local.instance2 : 
+  for ans in val : ans
+  ]
+}
+
+
+output "name" {
+  value = local.instances
+}
+
+output "name2" {
+  value = local.instance2
+}
+
+output "name3" {
+  value = local.new_lt
+}
+
+
+resource "null_resource" "ansible_instances_connection_check" {
+  count = length(local.instances)
+  provisioner "remote-exec" {
+    inline = ["echo 'Wait until SSH is ready'"]
+    connection {
+      type        = "ssh"
+      user        = "centos"
+      private_key = tls_private_key.private_key_pair[local.instances[count.index][0]].private_key_pem
+      host        = local.instances[count.index][1]
+    }
+  }
+}
+

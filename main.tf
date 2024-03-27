@@ -174,23 +174,50 @@ locals {
       instance_details.network_interface[0].network_ip
     ]
   }
+
+
+  all_vms = concat([
+    for server_name, vm_info in module.compute_instance :
+    [
+      for instance_details in vm_info.instances_details :
+      [server_name, instance_details.network_interface[0].network_ip]
+    ]
+  ]...)
+
 }
 
+output "val" {
+  value = local.all_vms
+}
+
+
 resource "null_resource" "ansible_instances_connection_check" {
-  triggers = {
-    always_run = "${timestamp()}"
-  }
-  for_each = local.server_key_mapping
+  count = length(local.all_vms)
   provisioner "remote-exec" {
     inline = ["echo 'Wait until SSH is ready'"]
     connection {
       type        = "ssh"
       user        = "centos"
-      private_key = tls_private_key.private_key_pair[each.key].private_key_pem
-      host        = each.value[0]
+      private_key = tls_private_key.private_key_pair[local.all_vms[count.index][0]].private_key_pem
+      host        = local.all_vms[count.index][1]
     }
   }
 }
+# resource "null_resource" "ansible_instances_connection_check" {
+#   triggers = {
+#     always_run = "${timestamp()}"
+#   }
+#   for_each = local.server_key_mapping
+#   provisioner "remote-exec" {
+#     inline = ["echo 'Wait until SSH is ready'"]
+#     connection {
+#       type        = "ssh"
+#       user        = "centos"
+#       private_key = tls_private_key.private_key_pair[each.key].private_key_pem
+#       host        = each.value[0]
+#     }
+#   }
+# }
 
 
 resource "null_resource" "ansible_playbook_runner" {
