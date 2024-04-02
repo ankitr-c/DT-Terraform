@@ -184,19 +184,19 @@ locals {
 
 }
 
-resource "null_resource" "ansible_instances_connection_check" {
-  # depends_on = [module.compute_instance]
-  count = length(local.instances)
-  provisioner "remote-exec" {
-    inline = ["echo 'Wait until SSH is ready'"]
-    connection {
-      type        = "ssh"
-      user        = "centos"
-      private_key = tls_private_key.private_key_pair[local.instances[count.index][0]].private_key_pem
-      host        = local.instances[count.index][1]
-    }
-  }
-}
+# resource "null_resource" "ansible_instances_connection_check" {
+#   # depends_on = [module.compute_instance]
+#   count = length(local.instances)
+#   provisioner "remote-exec" {
+#     inline = ["echo 'Wait until SSH is ready'"]
+#     connection {
+#       type        = "ssh"
+#       user        = "centos"
+#       private_key = tls_private_key.private_key_pair[local.instances[count.index][0]].private_key_pem
+#       host        = local.instances[count.index][1]
+#     }
+#   }
+# }
 
 # resource "ansible_host" "hosts" {
 #   count  = length(local.instances)
@@ -223,37 +223,37 @@ resource "null_resource" "ansible_instances_connection_check" {
 # }
 
 
-resource "null_resource" "ansible_inventory_creator" {
-  triggers = {
-    always_run = "${timestamp()}"
-  }
+# resource "null_resource" "ansible_inventory_creator" {
+#   triggers = {
+#     always_run = "${timestamp()}"
+#   }
 
-  provisioner "local-exec" {
-    command = <<EOT
-cat <<EOF > inventory.ini
-${join("\n", [for server_name, data in module.compute_instance : "[${server_name}]\n${join("\n", [for instance in data.instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}"])}
-EOF
-EOT
-  }
-}
+#   provisioner "local-exec" {
+#     command = <<EOT
+# cat <<EOF > inventory.ini
+# ${join("\n", [for server_name, data in module.compute_instance : "[${server_name}]\n${join("\n", [for instance in data.instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}"])}
+# EOF
+# EOT
+#   }
+# }
 
 
-resource "ansible_playbook" "playbook" {
-  # depends_on = [ansible_group.group,
-  # ansible_host.hosts]
-  depends_on = [null_resource.ansible_instances_connection_check,
-  null_resource.ansible_inventory_creator]
-  # for_each   = local.server_key_mapping
-  count      = length(local.instances)
-  playbook   = "${local.instances[count.index][0]}-playbook.yml"
-  name       = local.instances[count.index][1]
-  groups     = [local.instances[count.index][0]]
-  verbosity  = 6
-  replayable = true
-  extra_vars = {
-    inventory = "inventory.ini"
-  }
-}
+# resource "ansible_playbook" "playbook" {
+#   # depends_on = [ansible_group.group,
+#   # ansible_host.hosts]
+#   depends_on = [null_resource.ansible_instances_connection_check,
+#   null_resource.ansible_inventory_creator]
+#   # for_each   = local.server_key_mapping
+#   count      = length(local.instances)
+#   playbook   = "${local.instances[count.index][0]}-playbook.yml"
+#   name       = local.instances[count.index][1]
+#   groups     = [local.instances[count.index][0]]
+#   verbosity  = 6
+#   replayable = true
+#   extra_vars = {
+#     inventory = "inventory.ini"
+#   }
+# }
 
 
 
