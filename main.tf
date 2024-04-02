@@ -416,6 +416,14 @@ locals {
   }
 }
 
+resource "google_compute_address" "default" {
+  for_each = local.all_vms.lb_servers
+  name     = "${each.key}-external-ip"
+  project  = var.config.project
+  # region  = var.lb_config["region"]
+  region = "us-west1-a"
+}
+
 resource "google_compute_target_instance" "default" {
 
   for_each = local.lb_servers
@@ -438,9 +446,7 @@ resource "google_compute_forwarding_rule" "default" {
   load_balancing_scheme = "EXTERNAL"
   port_range            = "443"
   target                = google_compute_target_instance.default[each.key].self_link
-
-
-  # ip_address            = google_compute_address.this.address
+  ip_address            = google_compute_address.default[each.key].address
 }
 
 
