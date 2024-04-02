@@ -189,21 +189,21 @@ resource "null_resource" "ansible_instances_connection_check" {
   }
 }
 
-resource "ansible_host" "hosts" {
-  count  = length(local.instances)
-  name   = local.instances[count.index][1]
-  groups = [local.instances[count.index][0]]
-  variables = {
-    ansible_user                 = "centos",
-    ansible_ssh_private_key_file = "${local.instances[count.index][0]}_ssh_key.pem",
-    ansible_python_interpreter   = "/usr/bin/python3"
-  }
-}
+# resource "ansible_host" "hosts" {
+#   count  = length(local.instances)
+#   name   = local.instances[count.index][1]
+#   groups = [local.instances[count.index][0]]
+#   variables = {
+#     ansible_user                 = "centos",
+#     ansible_ssh_private_key_file = "${local.instances[count.index][0]}_ssh_key.pem",
+#     ansible_python_interpreter   = "/usr/bin/python3"
+#   }
+# }
 
-resource "ansible_group" "group" {
-  for_each = local.server_key_mapping
-  name     = each.key
-}
+# resource "ansible_group" "group" {
+#   for_each = local.server_key_mapping
+#   name     = each.key
+# }
 
 resource "null_resource" "ansible_inventory_creator" {
   triggers = {
@@ -221,11 +221,10 @@ EOT
 
 
 resource "ansible_playbook" "playbook" {
-  depends_on = [ansible_group.group, ansible_host.hosts]
+  depends_on = [null_resource.ansible_instances_connection_check, null_resource.ansible_inventory_creator]
   for_each   = local.server_key_mapping
   playbook   = "${each.key}-playbook.yml"
-  # name       = each.key
-  name       = local.instances[0][1]
+  name       = each.key
   groups     = [each.key]
   verbosity  = 6
   replayable = true
@@ -235,13 +234,13 @@ resource "ansible_playbook" "playbook" {
 }
 
 
-output "groups" {
-  value = ansible_group.group
-}
+# output "groups" {
+#   value = ansible_group.group
+# }
 
-output "hosts" {
-  value = ansible_host.hosts
-}
+# output "hosts" {
+#   value = ansible_host.hosts
+# }
 
 output "instances" {
   value = local.instances
