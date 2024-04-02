@@ -1,0 +1,17 @@
+---
+- name: Installing Apache
+  hosts: dt2 # Matched by the playbook targeting
+  become: true # Required for package installation
+
+  tasks:
+    - name: Update package cache and install Apache
+      yum:
+        name: httpd
+        state: latest
+        #update_cache: yes # Ensure up-to-date package information
+
+    - name: Start Apache HTTP server
+      service:
+        name: httpd
+        state: started
+        enabled: yes
