@@ -417,7 +417,7 @@ locals {
 }
 
 resource "google_compute_address" "default" {
-  for_each = local.all_vms.lb_servers
+  for_each = local.lb_servers
   name     = "${each.key}-external-ip"
   project  = var.config.project
   # region  = var.lb_config["region"]
