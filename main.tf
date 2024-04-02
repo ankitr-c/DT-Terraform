@@ -421,7 +421,7 @@ resource "google_compute_address" "default" {
   name     = "${each.key}-external-ip"
   project  = var.config.project
   # region  = var.lb_config["region"]
-  region = "us-west1-a"
+  region = var.config.region
 }
 
 resource "google_compute_target_instance" "default" {
