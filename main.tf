@@ -157,17 +157,17 @@ locals {
 # if server_name == "dynatrace"
 
 locals {
-  # instances = [
-  #   for server_name, vm_info in module.compute_instance :
-  #   flatten(
-  #     [
-  #       for instance_details in vm_info.instances_details :
-  #       [server_name, instance_details.network_interface[0].network_ip]
-  #   ]...)
-  # ]
-
-
   instances = [
+    for server_name, vm_info in module.compute_instance :
+    flatten(
+      [
+        for instance_details in vm_info.instances_details :
+        [server_name, instance_details.network_interface[0].network_ip]
+    ]...)
+  ]
+
+
+  instances_hosts = [
     for server_name, vm_info in module.compute_instance :
     flatten(
       [
@@ -262,6 +262,10 @@ resource "ansible_playbook" "playbook" {
 
 output "instances" {
   value = local.instances
+}
+
+output "instances" {
+  value = local.instances_hosts
 }
 
 # output "server_key_mapping" {
