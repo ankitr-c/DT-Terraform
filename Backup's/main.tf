@@ -4,6 +4,8 @@ data "google_compute_zones" "available" {
 }
 
 locals {
+  #   instance_template = [for i in module.instance_template : i.self_link]
+
   default_roles = [
     "${var.config.project}=>roles/monitoring.metricWriter",
     "${var.config.project}=>roles/logging.logWriter",
@@ -17,11 +19,13 @@ locals {
 
 }
 module "service_accounts" {
-  source     = "terraform-google-modules/service-accounts/google"
-  version    = "~>4.2.1"
+  source  = "terraform-google-modules/service-accounts/google"
+  version = "~>4.2.1"
+  #   count           = length(var.server)
   for_each   = local.servers
   project_id = var.config.project
-  names      = ["${var.app.name}-${each.value.name}-sa"]
+  #   names           = ["${var.app.name}-${var.server[count.index].name}-sa"]
+  names = ["${var.app.name}-${each.value.name}-sa"]
 
   org_id          = local.sa_conf["org_id"]
   project_roles   = each.value.additional_service_account_roles != null ? concat(each.value.additional_service_account_roles, local.default_roles) : local.default_roles
@@ -32,14 +36,32 @@ locals {
   servers = {
     for idx, instance_config in var.server : instance_config.name => instance_config
   }
+  #   zone_counter = 0
 }
+# # Use a null_resource to manage the zone counter
+# resource "null_resource" "zone_counter" {
+#   triggers = {
+#     always_run = "${timestamp()}"
+#   }
+
+#   provisioner "local-exec" {
+#     command = "echo $((local.zone_counter += 1)) > zone_counter.txt"
+#   }
+# }
 
 module "compute_instance" {
-  source              = "terraform-google-modules/vm/google//modules/compute_instance"
-  version             = "~>9.0.0"
-  for_each            = local.servers
-  region              = var.config.region
-  hostname            = "${var.app.env}-${each.key}"
+  source  = "terraform-google-modules/vm/google//modules/compute_instance"
+  version = "~>9.0.0"
+  #   count   = length(module.instance_template)
+  for_each = local.servers
+  region   = var.config.region
+  #   zone                = var.zone == null ? data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names)] : var.zone
+  #   zone = data.google_compute_zones.available.names[0]
+  # zone = var.zone == null ? data.google_compute_zones.available.names[local.zone_counter % length(data.google_compute_zones.available.names)] : var.zone
+  #   zone = var.zone == null ? data.google_compute_zones.available.names[local.zone_counter % length(data.google_compute_zones.available.names)] : var.zone
+  #   hostname = "${var.app.env}-${var.server[count.index].name}"
+  hostname = "${var.app.env}-${each.key}"
+  #   instance_template   = tostring(local.instance_template[count.index])
   instance_template   = module.instance_template[each.key].self_link
   num_instances       = each.value.instance_config.count
   deletion_protection = false
@@ -49,11 +71,13 @@ module "compute_instance" {
 
 
 module "instance_template" {
-  source             = "terraform-google-modules/vm/google//modules/instance_template"
-  version            = "~>9.0.0"
-  for_each           = local.servers
-  region             = var.config.region
-  project_id         = var.config.project
+  source  = "terraform-google-modules/vm/google//modules/instance_template"
+  version = "~>9.0.0"
+  #   count              = length(var.server)
+  for_each   = local.servers
+  region     = var.config.region
+  project_id = var.config.project
+  #   tags               = var.server[count.index].tags
   tags               = each.value.tags
   source_image       = each.value.instance_config.source_image
   disk_size_gb       = each.value.instance_config.root_disk_size
@@ -88,22 +112,22 @@ module "instance_template" {
 
 
 
-#########################PRIVATE KEY PART####################
+############# Private Key ##############
 
 resource "tls_private_key" "private_key_pair" {
+  #   count     = var.app.os == "linux" ? length(var.server) : 0
   for_each  = var.app.os == "linux" ? local.servers : {}
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
 resource "local_sensitive_file" "ssh_key" {
+  #   count           = var.app.os == "linux" ? length(var.server) : 0
   for_each        = var.app.os == "linux" ? local.servers : {}
   content         = tls_private_key.private_key_pair[each.key].private_key_pem
   filename        = "${path.module}/${each.value.name}_ssh_key.pem"
   file_permission = "0600"
 }
-
-######################FIREWALL RULE PART######################
 
 locals {
   default_allow_cidr = ["192.168.5.0/24"]
@@ -127,7 +151,19 @@ resource "google_compute_firewall" "rule" {
 }
 
 
+resource "null_resource" "ansible_inventory_creator" {
+  triggers = {
+    always_run = "${timestamp()}"
+  }
 
+  provisioner "local-exec" {
+    command = <<EOT
+cat <<EOF > inventory.ini
+${join("\n", [for server_name, data in module.compute_instance : "[${server_name}]\n${join("\n", [for instance in data.instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}"])}
+EOF
+EOT
+  }
+}
 
 locals {
 
@@ -137,310 +173,36 @@ locals {
     for server_name, vm_info in module.compute_instance :
     [
       for instance_details in vm_info.instances_details :
-      [server_name, instance_details.network_interface[0].network_ip, instance_details.id]
+      [server_name, instance_details.network_interface[0].network_ip]
     ]
   ]...)
 
-  # dynatrace_instances = [for server_data in local.all_vms : server_data[2] if server_data[0] == "dynatrace"]
-
-  # servers_require_lb = ["dynatrace"]
-
-  # lb_servers = {
-  #   for server_name, vm_info in module.compute_instance :
-  #   server_name => [for instance_details in vm_info.instances_details : instance_details.id]
-  #   # if contains(local.servers_require_lb, server_name)
-  #   if contains(["dynatrace"], server_name)
-
-  # }
 }
 
-# if server_name == "dynatrace"
 
+resource "null_resource" "ansible_instances_connection_check" {
+  count = length(local.all_vms)
+  provisioner "remote-exec" {
+    inline = ["echo 'Wait until SSH is ready'"]
+    connection {
+      type        = "ssh"
+      user        = "centos"
+      private_key = tls_private_key.private_key_pair[local.all_vms[count.index][0]].private_key_pem
+      host        = local.all_vms[count.index][1]
+    }
+  }
+}
 
-
-######################PASSTHROUGH LOAD BALANCER PART FOR DYNATRACE###########################
-
-# resource "google_compute_instance_group" "default" {
-#   project  = var.config.project
-#   zone     = "us-west1-a"
-#   for_each = local.lb_servers
-#   name     = "${each.key}-tcp-passthrough-umg"
-#   # instances = [for server_data in local.all_vms : server_data[2] if server_data[0] == "dynatrace"]
-#   instances = each.value
-#   named_port {
-#     name = "https"
-#     port = "443"
-#   }
-# }
-
-
-# resource "google_compute_region_health_check" "default" {
-#   for_each           = local.lb_servers
-#   project            = var.config.project
-#   region             = var.config.region
-#   name               = "${each.key}-tcp-passthrough-health-check"
-#   timeout_sec        = 1
-#   check_interval_sec = 5
-
-#   tcp_health_check {
-#     port = "443"
-#   }
-# }
-
-# resource "google_compute_region_backend_service" "default" {
-#   project               = var.config.project
-#   region                = var.config.region
-#   for_each              = local.lb_servers
-#   name                  = "${each.key}-tcp-passthrough-xlb-backend-service"
-#   protocol              = "TCP"
-#   port_name             = "tcp"
-#   load_balancing_scheme = "EXTERNAL"
-#   timeout_sec           = 10
-#   health_checks         = [google_compute_region_health_check.default[each.key].id]
-#   backend {
-#     group = google_compute_instance_group.default[each.key].id
-#     # balancing_mode = "UTILIZATION"
-#     balancing_mode = "CONNECTION"
-#     # max_utilization = 0.70
-#     # capacity_scaler = 1.0
-#   }
-# }
-
-
-
-# resource "google_compute_forwarding_rule" "default" {
-#   project               = var.config.project
-#   region                = var.config.region
-#   for_each              = local.lb_servers
-#   name                  = "${each.key}-tcp-passthrouugh-xlb-forwarding-rule"
-#   backend_service       = google_compute_region_backend_service.default[each.key].id
-#   ip_protocol           = "TCP"
-#   load_balancing_scheme = "EXTERNAL"
-#   port_range            = "443"
-#   # all_ports = true
-#   # allow_global_access = true
-#   # all_ports             = true
-#   # allow_global_access   = true
-#   # network               = google_compute_network.ilb_network.id
-#   # subnetwork            = google_compute_subnetwork.ilb_subnet.id
-# }
-
-
-
-
-###########################ANSIBLE PART############################
-
-# resource "null_resource" "ansible_inventory_creator" {
-#   triggers = {
-#     always_run = "${timestamp()}"
-#   }
-
-#   provisioner "local-exec" {
-#     command = <<EOT
-# cat <<EOF > inventory.ini
-# ${join("\n", [for server_name, data in module.compute_instance : "[${server_name}]\n${join("\n", [for instance in data.instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}"])}
-# EOF
-# EOT
-#   }
-# }
-
-# resource "null_resource" "ansible_instances_connection_check" {
-#   count = length(local.all_vms)
-#   provisioner "remote-exec" {
-#     inline = ["echo 'Wait until SSH is ready'"]
-#     connection {
-#       type        = "ssh"
-#       user        = "centos"
-#       private_key = tls_private_key.private_key_pair[local.all_vms[count.index][0]].private_key_pem
-#       host        = local.all_vms[count.index][1]
-#     }
-#   }
-# }
-
-# resource "null_resource" "ansible_playbook_runner" {
-#   triggers = {
-#     always_run = "${timestamp()}"
-#   }
-#   depends_on = [null_resource.ansible_instances_connection_check]
-#   count      = length(local.server_list)
-#   provisioner "local-exec" {
-#     command = "ansible-playbook  -i inventory.ini -u centos --private-key ${local.server_list[count.index]}_ssh_key.pem ${local.server_list[count.index]}-playbook.yml"
-#   }
-# }
-
-
-####################ABOVE IS THE WORKING BLOCK##################
-
-
-####################TARGET GROUP FORWARDING RULE################
-
-
-# resource "google_compute_target_instance" "default" {
-#   project = var.config.project
-#   # zone = var.config.zone
-#   zone     = "us-west1-a"
-#   name     = "sample-tcp-target-instance"
-#   instance = module.compute_instance["dynatrace"].instances_details[0].id
-# }
-
-# resource "google_compute_forwarding_rule" "default" {
-#   project               = var.config.project
-#   ip_protocol           = "TCP"
-#   name                  = "sample-tcp-fwd-rule"
-#   region                = var.config.region
-#   load_balancing_scheme = "EXTERNAL"
-#   port_range            = "443"
-#   target                = google_compute_target_instance.default.self_link
-#   # ip_address            = google_compute_address.this.address
-# }
-
-
-
-#####################PROXY LOAD BALANCER#####################
-
-
-# locals {
-
-#   lb_servers = {
-#     for server_name, vm_info in module.compute_instance :
-#     server_name => [for instance_details in vm_info.instances_details : instance_details.id]
-#     # if contains(local.servers_require_lb, server_name)
-#     if contains(["dynatrace"], server_name)
-
-#   }
-# }
-
-
-
-# resource "google_compute_global_forwarding_rule" "default" {
-#   project               = var.config.project
-#   for_each              = local.lb_servers
-#   name                  = "${each.key}-tcp-proxy-xlb-forwarding-rule"
-#   ip_protocol           = "TCP"
-#   load_balancing_scheme = "EXTERNAL"
-#   port_range            = "80"
-#   target                = google_compute_target_tcp_proxy.default[each.key].id
-#   # ip_address            = module.global_external_address[count.index].addresses
-# }
-
-# resource "google_compute_target_tcp_proxy" "default" {
-#   for_each        = local.lb_servers
-#   project         = var.config.project
-#   name            = "${each.key}-test-proxy-health-check"
-#   backend_service = google_compute_backend_service.default[each.key].id
-# }
-
-# resource "google_compute_backend_service" "default" {
-#   project               = var.config.project
-#   for_each              = local.lb_servers
-#   name                  = "${each.key}-tcp-proxy-xlb-backend-service"
-#   protocol              = "TCP"
-#   port_name             = "tcp"
-#   load_balancing_scheme = "EXTERNAL"
-#   timeout_sec           = 10
-#   health_checks         = [google_compute_health_check.default[each.key].id]
-#   backend {
-#     group           = google_compute_instance_group.default[each.key].id
-#     balancing_mode  = "UTILIZATION"
-#     max_utilization = 0.70
-#     capacity_scaler = 1.0
-#   }
-# }
-
-
-# resource "google_compute_health_check" "default" {
-#   project            = var.config.project
-#   for_each           = local.lb_servers
-#   name               = "${each.key}-tcp-proxy-health-check"
-#   timeout_sec        = 1
-#   check_interval_sec = 5
-
-#   tcp_health_check {
-#     port = "443"
-#   }
-# }
-
-# resource "google_compute_instance_group" "default" {
-#   project   = var.config.project
-#   zone      = "us-west1-a"
-#   for_each  = local.lb_servers
-#   name      = "${each.key}-tcp-proxy-umg"
-#   instances = each.value
-#   named_port {
-#     name = "https"
-#     port = "443"
-#   }
-# }
-
-
-
-# resource "google_compute_instance_group" "default" {
-#   project  = var.config.project
-#   zone     = "us-west1-a"
-#   for_each = local.lb_servers
-#   name     = "${each.key}-tcp-passthrough-umg"
-#   # instances = [for server_data in local.all_vms : server_data[2] if server_data[0] == "dynatrace"]
-#   instances = each.value
-#   named_port {
-#     name = "https"
-#     port = "443"
-#   }
-# }
-
-
-# resource "google_compute_region_health_check" "default" {
-#   for_each           = local.lb_servers
-#   project            = var.config.project
-#   region             = var.config.region
-#   name               = "${each.key}-tcp-passthrough-health-check"
-#   timeout_sec        = 1
-#   check_interval_sec = 5
-
-#   tcp_health_check {
-#     port = "443"
-#   }
-# }
-
-# resource "google_compute_region_backend_service" "default" {
-#   project               = var.config.project
-#   region                = var.config.region
-#   for_each              = local.lb_servers
-#   name                  = "${each.key}-tcp-passthrough-xlb-backend-service"
-#   protocol              = "TCP"
-#   port_name             = "tcp"
-#   load_balancing_scheme = "EXTERNAL"
-#   timeout_sec           = 10
-#   health_checks         = [google_compute_region_health_check.default[each.key].id]
-#   backend {
-#     group = google_compute_instance_group.default[each.key].id
-#     # balancing_mode = "UTILIZATION"
-#     balancing_mode = "CONNECTION"
-#     # max_utilization = 0.70
-#     # capacity_scaler = 1.0
-#   }
-# }
-
-
-
-# resource "google_compute_forwarding_rule" "default" {
-#   project               = var.config.project
-#   region                = var.config.region
-#   for_each              = local.lb_servers
-#   name                  = "${each.key}-tcp-passthrouugh-xlb-forwarding-rule"
-#   backend_service       = google_compute_region_backend_service.default[each.key].id
-#   ip_protocol           = "TCP"
-#   load_balancing_scheme = "EXTERNAL"
-#   port_range            = "443"
-#   # all_ports = true
-#   # allow_global_access = true
-#   # all_ports             = true
-#   # allow_global_access   = true
-#   # network               = google_compute_network.ilb_network.id
-#   # subnetwork            = google_compute_subnetwork.ilb_subnet.id
-# }
-
-
-
+resource "null_resource" "ansible_playbook_runner" {
+  triggers = {
+    always_run = "${timestamp()}"
+  }
+  depends_on = [null_resource.ansible_instances_connection_check]
+  count      = length(local.server_list)
+  provisioner "local-exec" {
+    command = "ansible-playbook  -i inventory.ini -u centos --private-key ${local.server_list[count.index]}_ssh_key.pem ${local.server_list[count.index]}-playbook.yml"
+  }
+}
 # for_each   = local.server_key_mapping
 
 
