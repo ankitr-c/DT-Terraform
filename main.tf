@@ -454,7 +454,7 @@ output "frd_rule" {
 }
 
 output "compute-op" {
-  value = module.compute_instance
+  value = module.compute_instance["dynatrace"].instances_details[0].hostname
 }
 #####################PROXY LOAD BALANCER#####################
 
