@@ -1,7 +1,7 @@
-data "google_compute_zones" "available" {
-  project = var.config.project
-  region  = var.config.region
-}
+# data "google_compute_zones" "available" {
+#   project = var.config.project
+#   region  = var.config.region
+# }
 
 locals {
   default_roles = [
@@ -127,8 +127,6 @@ resource "google_compute_firewall" "rule" {
 }
 
 
-
-
 locals {
 
   server_list = [for server_name, vm_info in module.compute_instance : server_name]
@@ -143,7 +141,6 @@ locals {
 
   # dynatrace_instances = [for server_data in local.all_vms : server_data[2] if server_data[0] == "dynatrace"]
 
-  # servers_require_lb = ["dynatrace"]
 
   # lb_servers = {
   #   for server_name, vm_info in module.compute_instance :
@@ -167,14 +164,14 @@ locals {
   ]
 
 
-  instances_hosts = [
-    for server_name, vm_info in module.compute_instance :
-    flatten(
-      [
-        for instance_details in vm_info.instances_details :
-        [server_name, instance_details.hostname]
-    ]...)
-  ]
+  # instances_hosts = [
+  #   for server_name, vm_info in module.compute_instance :
+  #   flatten(
+  #     [
+  #       for instance_details in vm_info.instances_details :
+  #       [server_name, instance_details.hostname]
+  #   ]...)
+  # ]
 
 
   # server_key_mapping = {
@@ -187,19 +184,19 @@ locals {
 
 }
 
-resource "null_resource" "ansible_instances_connection_check" {
-  # depends_on = [module.compute_instance]
-  count = length(local.instances)
-  provisioner "remote-exec" {
-    inline = ["echo 'Wait until SSH is ready'"]
-    connection {
-      type        = "ssh"
-      user        = "centos"
-      private_key = tls_private_key.private_key_pair[local.instances[count.index][0]].private_key_pem
-      host        = local.instances[count.index][1]
-    }
-  }
-}
+# resource "null_resource" "ansible_instances_connection_check" {
+#   # depends_on = [module.compute_instance]
+#   count = length(local.instances)
+#   provisioner "remote-exec" {
+#     inline = ["echo 'Wait until SSH is ready'"]
+#     connection {
+#       type        = "ssh"
+#       user        = "centos"
+#       private_key = tls_private_key.private_key_pair[local.instances[count.index][0]].private_key_pem
+#       host        = local.instances[count.index][1]
+#     }
+#   }
+# }
 
 # resource "ansible_host" "hosts" {
 #   count  = length(local.instances)
@@ -226,19 +223,19 @@ resource "null_resource" "ansible_instances_connection_check" {
 # }
 
 
-resource "null_resource" "ansible_inventory_creator" {
-  triggers = {
-    always_run = "${timestamp()}"
-  }
+# resource "null_resource" "ansible_inventory_creator" {
+#   triggers = {
+#     always_run = "${timestamp()}"
+#   }
 
-  provisioner "local-exec" {
-    command = <<EOT
-cat <<EOF > inventory.ini
-${join("\n", [for server_name, data in module.compute_instance : "[${server_name}]\n${join("\n", [for instance in data.instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}"])}
-EOF
-EOT
-  }
-}
+#   provisioner "local-exec" {
+#     command = <<EOT
+# cat <<EOF > inventory.ini
+# ${join("\n", [for server_name, data in module.compute_instance : "[${server_name}]\n${join("\n", [for instance in data.instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}"])}
+# EOF
+# EOT
+#   }
+# }
 
 
 # resource "ansible_playbook" "playbook" {
@@ -264,9 +261,9 @@ output "instances" {
   value = local.instances
 }
 
-output "instances_name" {
-  value = local.instances_hosts
-}
+# output "instances_name" {
+#   value = local.instances_hosts
+# }
 
 # output "server_key_mapping" {
 #   value = local.server_key_mapping
@@ -282,12 +279,6 @@ output "instances_name" {
 # }
 
 ####################################
-
-
-
-
-
-
 
 
 
@@ -408,27 +399,61 @@ output "instances_name" {
 
 ####################TARGET GROUP FORWARDING RULE################
 
+# lb_servers = {
+#   for server_name, vm_info in module.compute_instance :
+#   server_name => [for instance_details in vm_info.instances_details : instance_details.id]
+#   # if contains(local.servers_require_lb, server_name)
+#   if contains(["dynatrace"], server_name)
 
-# resource "google_compute_target_instance" "default" {
-#   project = var.config.project
-#   # zone = var.config.zone
-#   zone     = "us-west1-a"
-#   name     = "sample-tcp-target-instance"
-#   instance = module.compute_instance["dynatrace"].instances_details[0].id
 # }
 
-# resource "google_compute_forwarding_rule" "default" {
-#   project               = var.config.project
-#   ip_protocol           = "TCP"
-#   name                  = "sample-tcp-fwd-rule"
-#   region                = var.config.region
-#   load_balancing_scheme = "EXTERNAL"
-#   port_range            = "443"
-#   target                = google_compute_target_instance.default.self_link
-#   # ip_address            = google_compute_address.this.address
-# }
+locals {
+  lb_servers = {
+    for server_name, vm_info in module.compute_instance :
+    server_name => [for instance_details in vm_info.instances_details : instance_details.id]
+    if contains(["dynatrace"], server_name)
+
+  }
+
+}
+
+resource "google_compute_target_instance" "default" {
+
+  for_each = module.compute_instance
+  # for_each = local.lb_servers
+  project = var.config.project
+  zone    = "us-west1-a"
+  # name     = "${each.key}tcp-target-instance"
+  name = "${each.key}-tcp-target-instance"
+  # instance = module.compute_instance[each.key].instances_details[0].id
+  instance = each.value.instances_details[0].id
+
+}
+
+resource "google_compute_forwarding_rule" "default" {
+  # for_each              = local.lb_servers
+  for_each              = module.compute_instance
+  project               = var.config.project
+  ip_protocol           = "TCP"
+  name                  = "${each.key}-tcp-fwd-rule"
+  region                = var.config.region
+  load_balancing_scheme = "EXTERNAL"
+  port_range            = "443"
+  target                = google_compute_target_instance.default[each.key].self_link
 
 
+  # ip_address            = google_compute_address.this.address
+}
+
+
+output "target" {
+  value = google_compute_target_instance.default
+}
+
+
+output "frd_rule" {
+  value = google_compute_forwarding_rule.default
+}
 
 #####################PROXY LOAD BALANCER#####################
 
