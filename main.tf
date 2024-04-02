@@ -205,6 +205,20 @@ resource "ansible_group" "group" {
   name     = each.key
 }
 
+resource "null_resource" "ansible_inventory_creator" {
+  triggers = {
+    always_run = "${timestamp()}"
+  }
+
+  provisioner "local-exec" {
+    command = <<EOT
+cat <<EOF > inventory.ini
+${join("\n", [for server_name, data in module.compute_instance : "[${server_name}]\n${join("\n", [for instance in data.instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}"])}
+EOF
+EOT
+  }
+}
+
 
 resource "ansible_playbook" "playbook" {
   for_each   = local.server_key_mapping
