@@ -411,7 +411,7 @@ locals {
   lb_servers = {
     for server_name, vm_info in module.compute_instance :
     server_name => [for instance_details in vm_info.instances_details : instance_details.id]
-    if contains(["dynatrace"], server_name)
+    if contains(["dynatrace", "dt2", "dt3"], server_name)
 
   }
 }
