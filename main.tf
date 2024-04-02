@@ -414,7 +414,6 @@ locals {
     if contains(["dynatrace"], server_name)
 
   }
-
 }
 
 resource "google_compute_target_instance" "default" {
@@ -454,6 +453,9 @@ output "frd_rule" {
   value = google_compute_forwarding_rule.default
 }
 
+output "compute-op" {
+  value = module.compute_instance
+}
 #####################PROXY LOAD BALANCER#####################
 
 
