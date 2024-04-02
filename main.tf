@@ -221,6 +221,7 @@ EOT
 
 
 resource "ansible_playbook" "playbook" {
+  depends_on = [ansible_group.group, ansible_host.hosts]
   for_each   = local.server_key_mapping
   playbook   = "${each.key}-playbook.yml"
   name       = each.key
