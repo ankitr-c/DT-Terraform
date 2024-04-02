@@ -426,7 +426,7 @@ resource "google_compute_target_instance" "default" {
   # name     = "${each.key}tcp-target-instance"
   name = "${each.key}-tcp-target-instance"
   # instance = module.compute_instance[each.key].instances_details[0].id
-  instance = each.value.instances_details[0].id
+  instance = each.value[0].instances_details[0].id
 
 }
 
