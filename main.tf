@@ -419,7 +419,7 @@ locals {
 
 resource "google_compute_target_instance" "default" {
 
-  for_each = module.compute_instance
+  for_each = local.lb_servers
   # for_each = local.lb_servers
   project = var.config.project
   zone    = "us-west1-a"
@@ -431,8 +431,7 @@ resource "google_compute_target_instance" "default" {
 }
 
 resource "google_compute_forwarding_rule" "default" {
-  # for_each              = local.lb_servers
-  for_each              = module.compute_instance
+  for_each              = local.lb_servers
   project               = var.config.project
   ip_protocol           = "TCP"
   name                  = "${each.key}-tcp-fwd-rule"
