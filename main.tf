@@ -425,7 +425,7 @@ resource "google_compute_target_instance" "default" {
   zone    = "us-west1-a"
   # name     = "${each.key}tcp-target-instance"
   name     = "${each.key}-tcp-target-instance"
-  instance = module.compute_instance[each.key].instances_details[0].id
+  instance = module.compute_instance[each.key].instances_details.id
   # instance = each.value[0].instances_details[0].id
 
 }
