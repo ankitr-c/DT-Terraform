@@ -177,7 +177,8 @@ locals {
 }
 
 resource "null_resource" "ansible_instances_connection_check" {
-  count = length(local.instances)
+  depends_on = []
+  count      = length(local.instances)
   provisioner "remote-exec" {
     inline = ["echo 'Wait until SSH is ready'"]
     connection {
@@ -204,6 +205,15 @@ resource "null_resource" "ansible_instances_connection_check" {
 #   for_each = local.server_key_mapping
 #   name     = each.key
 # }
+
+# output "groups" {
+#   value = ansible_group.group
+# }
+
+# output "hosts" {
+#   value = ansible_host.hosts
+# }
+
 
 resource "null_resource" "ansible_inventory_creator" {
   triggers = {
@@ -238,13 +248,6 @@ resource "ansible_playbook" "playbook" {
 }
 
 
-# output "groups" {
-#   value = ansible_group.group
-# }
-
-# output "hosts" {
-#   value = ansible_host.hosts
-# }
 
 output "instances" {
   value = local.instances
