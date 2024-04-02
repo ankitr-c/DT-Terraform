@@ -224,7 +224,8 @@ resource "ansible_playbook" "playbook" {
   depends_on = [ansible_group.group, ansible_host.hosts]
   for_each   = local.server_key_mapping
   playbook   = "${each.key}-playbook.yml"
-  name       = each.key
+  # name       = each.key
+  name = local.instances[0][1]
   groups     = [each.key]
   verbosity  = 6
   replayable = true
