@@ -450,6 +450,9 @@ resource "google_compute_forwarding_rule" "default" {
 }
 
 
+output "ip_addresses" {
+  value = google_compute_address.default
+}
 output "target" {
   value = google_compute_target_instance.default
 }
