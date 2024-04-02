@@ -156,100 +156,6 @@ locals {
 
 # if server_name == "dynatrace"
 
-locals {
-  instances = [
-    for server_name, vm_info in module.compute_instance :
-    flatten(
-      [
-        for instance_details in vm_info.instances_details :
-        [server_name, instance_details.network_interface[0].network_ip]
-    ]...)
-  ]
-
-  server_key_mapping = {
-    for server_name, vm_info in module.compute_instance :
-    server_name => [
-      for instance_details in vm_info.instances_details :
-      instance_details.network_interface[0].network_ip
-    ]
-  }
-
-}
-
-resource "null_resource" "ansible_instances_connection_check" {
-  count = length(local.instances)
-  provisioner "remote-exec" {
-    inline = ["echo 'Wait until SSH is ready'"]
-    connection {
-      type        = "ssh"
-      user        = "centos"
-      private_key = tls_private_key.private_key_pair[local.instances[count.index][0]].private_key_pem
-      host        = local.instances[count.index][1]
-    }
-  }
-}
-
-resource "ansible_host" "hosts" {
-  count  = length(local.instances)
-  name   = local.instances[count.index][1]
-  groups = [local.instances[count.index][0]]
-  variables = {
-    ansible_user                 = "centos",
-    ansible_ssh_private_key_file = "${local.instances[count.index][0]}_ssh_key.pem",
-    ansible_python_interpreter   = "/usr/bin/python3"
-  }
-}
-
-resource "ansible_group" "group" {
-  for_each = local.server_key_mapping
-  name     = each.key
-}
-
-
-resource "ansible_playbook" "playbook" {
-  for_each   = local.server_key_mapping
-  playbook   = "${each.key}-playbook.yml"
-  name       = each.key
-  groups     = [each.key]
-  verbosity  = 6
-  replayable = true
-}
-
-
-output "groups" {
-  value = ansible_group.group
-}
-
-output "hosts" {
-  value = ansible_host.hosts
-}
-
-output "instances" {
-  value = local.instances
-}
-
-output "server_key_mapping" {
-  value = local.server_key_mapping
-}
-
-
-################|^OP-IN-THE-CHAT^|#########################
-# resource "ansible_playbook" "playbook" {
-#   # count     = length(local.instances)
-#   playbook  = "${local.instances[0][0]}-playbook.yml"
-#   name      = local.instances[0][1]
-#   verbosity = 6
-# }
-
-####################################
-
-
-
-
-
-
-
-
 
 
 
@@ -568,6 +474,75 @@ output "server_key_mapping" {
 
 
 ####$$$$$ ABOVE IS WORKING $$$$$####
+# locals {
+#   instances = [
+#     for server_name, vm_info in module.compute_instance :
+#     flatten(
+#       [
+#         for instance_details in vm_info.instances_details :
+#         [server_name, instance_details.network_interface[0].network_ip]
+#     ]...)
+#   ]
+# }
+
+# output "name" {
+#   value = local.instances
+# }
+
+# resource "null_resource" "ansible_instances_connection_check" {
+#   count = length(local.instances)
+#   provisioner "remote-exec" {
+#     inline = ["echo 'Wait until SSH is ready'"]
+#     connection {
+#       type        = "ssh"
+#       user        = "centos"
+#       private_key = tls_private_key.private_key_pair[local.instances[count.index][0]].private_key_pem
+#       host        = local.instances[count.index][1]
+#     }
+#   }
+# }
+
+# resource "ansible_host" "hosts" {
+#   count  = length(local.instances)
+#   name   = local.instances[count.index][1]
+#   groups = [local.instances[count.index][0]]
+#   variables = {
+#     ansible_user                 = "centos",
+#     ansible_ssh_private_key_file = "${local.instances[count.index][0]}_ssh_key.pem",
+#     ansible_python_interpreter   = "/usr/bin/python3"
+#   }
+# }
+# resource "ansible_group" "group" {
+#   for_each = local.server_key_mapping
+#   name     = each.key
+# }
+
+# output "grp" {
+#   value = ansible_group.group
+# }
+
+# output "host" {
+#   value = ansible_host.hosts
+# }
+
+# resource "ansible_playbook" "playbook" {
+#   for_each   = local.server_key_mapping
+#   playbook   = "${each.key}-playbook.yml"
+#   name       = each.key
+#   groups     = [each.key]
+#   verbosity  = 6
+#   replayable = true
+# }
+
+################|^OP-IN-THE-CHAT^|#########################
+# resource "ansible_playbook" "playbook" {
+#   # count     = length(local.instances)
+#   playbook  = "${local.instances[0][0]}-playbook.yml"
+#   name      = local.instances[0][1]
+#   verbosity = 6
+# }
+
+####################################
 
 
 
