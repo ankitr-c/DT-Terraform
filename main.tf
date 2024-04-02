@@ -189,7 +189,7 @@ locals {
 
 resource "null_resource" "ansible_instances_connection_check" {
   # depends_on = [module.compute_instance]
-  count      = length(local.instances)
+  count = length(local.instances)
   provisioner "remote-exec" {
     inline = ["echo 'Wait until SSH is ready'"]
     connection {
@@ -264,7 +264,7 @@ output "instances" {
   value = local.instances
 }
 
-output "instances" {
+output "instances_name" {
   value = local.instances_hosts
 }
 
