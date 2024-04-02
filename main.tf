@@ -166,13 +166,13 @@ locals {
     ]...)
   ]
 
-  server_key_mapping = {
-    for server_name, vm_info in module.compute_instance :
-    server_name => [
-      for instance_details in vm_info.instances_details :
-      instance_details.network_interface[0].network_ip
-    ]
-  }
+  # server_key_mapping = {
+  #   for server_name, vm_info in module.compute_instance :
+  #   server_name => [
+  #     for instance_details in vm_info.instances_details :
+  #     instance_details.network_interface[0].network_ip
+  #   ]
+  # }
 
 }
 
@@ -221,11 +221,13 @@ EOT
 
 
 resource "ansible_playbook" "playbook" {
-  depends_on = [null_resource.ansible_instances_connection_check, null_resource.ansible_inventory_creator]
-  for_each   = local.server_key_mapping
-  playbook   = "${each.key}-playbook.yml"
-  name       = each.key
-  groups     = [each.key]
+  depends_on = [ansible_group.group,
+  ansible_host.hosts]
+  # for_each   = local.server_key_mapping
+  count      = length(local.instances)
+  playbook   = "${local.instances[count.index][0]}-playbook.yml"
+  name       = local.instances[count.index][1]
+  groups     = [local.instances[count.index][0]]
   verbosity  = 6
   replayable = true
   extra_vars = {
@@ -246,9 +248,9 @@ output "instances" {
   value = local.instances
 }
 
-output "server_key_mapping" {
-  value = local.server_key_mapping
-}
+# output "server_key_mapping" {
+#   value = local.server_key_mapping
+# }
 
 
 ################|^OP-IN-THE-CHAT^|#########################
