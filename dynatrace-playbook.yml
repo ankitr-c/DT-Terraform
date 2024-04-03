@@ -1,6 +1,6 @@
 ---
 - name: Installing Apache
-  hosts: dynatrace # Matched by the playbook targeting
+  hosts: all # Matched by the playbook targeting
   become: true # Required for package installation
 
   tasks:

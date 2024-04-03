@@ -292,36 +292,36 @@ locals {
 
 }
 
-resource "null_resource" "ansible_instances_connection_check" {
-  depends_on = [module.compute_instance]
-  count      = length(local.instances)
-  provisioner "remote-exec" {
-    inline = ["echo 'Wait until SSH is ready'"]
-    connection {
-      type        = "ssh"
-      user        = "centos"
-      private_key = tls_private_key.private_key_pair[local.instances[count.index].server].private_key_pem
-      host        = local.instances[count.index].ip_address
-    }
-  }
-}
+# resource "null_resource" "ansible_instances_connection_check" {
+#   depends_on = [module.compute_instance]
+#   count      = length(local.instances)
+#   provisioner "remote-exec" {
+#     inline = ["echo 'Wait until SSH is ready'"]
+#     connection {
+#       type        = "ssh"
+#       user        = "centos"
+#       private_key = tls_private_key.private_key_pair[local.instances[count.index].server].private_key_pem
+#       host        = local.instances[count.index].ip_address
+#     }
+#   }
+# }
 
-resource "ansible_host" "hosts" {
-  count  = length(local.instances)
-  name   = local.instances[count.index].ip_address
-  groups = [local.instances[count.index].server]
-  variables = {
-    ansible_user                 = "centos",
-    ansible_ssh_private_key_file = "${local.instances[count.index].server}_ssh_key.pem",
-    ansible_python_interpreter   = "/usr/bin/python3"
-  }
-}
+# resource "ansible_host" "hosts" {
+#   count  = length(local.instances)
+#   name   = local.instances[count.index].ip_address
+#   groups = [local.instances[count.index].server]
+#   variables = {
+#     ansible_user                 = "centos",
+#     ansible_ssh_private_key_file = "${local.instances[count.index].server}_ssh_key.pem",
+#     ansible_python_interpreter   = "/usr/bin/python3"
+#   }
+# }
 
 
-resource "ansible_group" "group" {
-  for_each = local.server_key_mapping
-  name     = each.key
-}
+# resource "ansible_group" "group" {
+#   for_each = local.server_key_mapping
+#   name     = each.key
+# }
 
 
 resource "null_resource" "ansible_inventory_creator" {
@@ -338,35 +338,59 @@ EOT
   }
 }
 
+resource "null_resource" "ansible_inventory_tester" {
+  triggers = {
+    always_run = "${timestamp()}"
+  }
 
-resource "ansible_playbook" "playbook" {
-  depends_on = [
-    ansible_group.group,
-    ansible_host.hosts
-  ]
-  # depends_on = [null_resource.ansible_instances_connection_check,
-  # null_resource.ansible_inventory_creator]
-  # # for_each   = local.server_key_mapping
-  count      = length(local.instances)
-  playbook   = "${local.instances[count.index].server}-playbook.yml"
-  name       = local.instances[count.index].ip_address
-  groups     = [local.instances[count.index].server]
-  verbosity  = 6
-  replayable = true
-  extra_vars = {
-    inventory = "inventory.ini"
+  provisioner "local-exec" {
+    command = <<EOT
+cat <<EOF > inventory_test.ini
+[dt]
+${join("\n", [for instance in module.compute_instance["dt"].instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}
+EOF
+EOT
   }
 }
 
 
-
-output "groups" {
-  value = ansible_group.group
+locals {
+  lb_instances = [for vm_info in module.compute_instance["dynatrace"].instances_details : {
+    name = vm_info.name,
+    id   = vm_info.id,
+    zone = vm_info.zone,
+    ip_address = vm_info.network_interface[0].network_ip
+  }]
 }
 
-output "hosts" {
-  value = ansible_host.hosts
+resource "ansible_playbook" "playbook" {
+  # depends_on = [
+  #   ansible_group.group,
+  #   ansible_host.hosts
+  # ]
+  # depends_on = [null_resource.ansible_instances_connection_check,
+  # null_resource.ansible_inventory_creator]
+  # # for_each   = local.server_key_mapping
+  count      = length(local.lb_instances)
+  playbook   = "dynatrace-playbook.yml"
+  name       = local.instances[count.index].ip_address
+  # groups     = [local.instances[count.index].server]
+  verbosity  = 6
+  replayable = true
+  # extra_vars = {
+  #   inventory = "inventory.ini"
+  # }
 }
+
+
+
+# output "groups" {
+#   value = ansible_group.group
+# }
+
+# output "hosts" {
+#   value = ansible_host.hosts
+# }
 
 output "instances" {
   value = local.instances
