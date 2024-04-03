@@ -347,7 +347,7 @@ resource "null_resource" "ansible_inventory_tester" {
     command = <<EOT
 cat <<EOF > inventory_test.ini
 [dt]
-${join("\n", [for instance in module.compute_instance["dt"].instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}
+${join("\n", [for instance in module.compute_instance["dynatrace"].instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}
 EOF
 EOT
   }
