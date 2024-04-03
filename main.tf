@@ -154,14 +154,14 @@ locals {
 # if server_name == "dynatrace"
 
 locals {
-  instances = [
-    for server_name, vm_info in module.compute_instance :
-    flatten(
-      [
-        for instance_details in vm_info.instances_details :
-        [server_name, vm_info.network_interface[0].network_ip]
-    ]...)
-  ]
+  # instances = [
+  #   for server_name, vm_info in module.compute_instance :
+  #   flatten(
+  #     [
+  #       for instance_details in vm_info.instances_details :
+  #       [server_name, vm_i.network_interface[0].network_ip]
+  #   ]...)
+  # ]
 
 
   # instances_hosts = [
@@ -257,9 +257,9 @@ locals {
 
 
 
-output "instances" {
-  value = local.instances
-}
+# output "instances" {
+#   value = local.instances
+# }
 
 # output "instances_name" {
 #   value = local.instances_hosts
