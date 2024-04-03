@@ -421,11 +421,11 @@ locals {
   #   if server_name == "dynatrace"
   # ]
 
-
-  lb_instances = [
-    for vm_info in module.compute_instance["dynatrace"].instances_details : [vm_info.name, vm_info.id, vm_info.zone]
-  ]
-
+  ############################
+  # lb_instances = [
+  #   for vm_info in module.compute_instance["dynatrace"].instances_details : [vm_info.name, vm_info.id, vm_info.zone]
+  # ]
+  #############################
 
   # instances = [
   #   for server_name, vm_info in module.compute_instance :
@@ -442,43 +442,99 @@ output "lb_jugad" {
   value = local.lb_instances
 }
 
-# output "lb_instances" {
-#   value = local.lb_instances
-# }
+
+
+locals {
+  # Dynamically create a list of instance attributes (name, ID, zone) for instances tagged with "dynatrace"
+  lb_instances = [for vm_info in module.compute_instance["dynatrace"].instances_details : {
+    name = vm_info.name,
+    id   = vm_info.id,
+    zone = vm_info.zone
+  }]
+}
+
+# Create external IP addresses for each instance
 resource "google_compute_address" "default" {
-  count   = length(local.lb_instances)
-  name    = "${local.lb_instances[count.index][0]}-external-ip"
-  project = var.config.project
-  region  = var.config.region
+  depends_on = [module.compute_instance]
+  count      = length(local.lb_instances)
+  name       = "${local.lb_instances[count.index].name}-external-ip"
+  project    = var.config.project
+  region     = var.config.region
 }
 
+# Create target instances for load balancing
 resource "google_compute_target_instance" "default" {
-  depends_on = [ module.compute_instance ]
-  count = length(local.lb_instances)
-  # for_each = local.lb_servers
-  project = var.config.project
-  # zone    = "us-west1-a"
-  zone = local.lb_instances[count.index][2]
-  # name     = "${each.key}tcp-target-instance"
-  name     = "${local.lb_instances[count.index][0]}-tcp-target-instance"
-  instance = local.lb_instances[count.index][1]
-  # instance = each.value[0].instances_details[0].id
-
+  depends_on = [module.compute_instance]
+  count      = length(local.lb_instances)
+  project    = var.config.project
+  zone       = local.lb_instances[count.index].zone
+  name       = "${local.lb_instances[count.index].name}-tcp-target-instance"
+  instance   = local.lb_instances[count.index].id
 }
 
+# Create forwarding rules for directing traffic to the target instances
 resource "google_compute_forwarding_rule" "default" {
-  depends_on = [ module.compute_instance ]
-  count = length(local.lb_instances)
-  # for_each              = local.lb_servers
+  depends_on            = [module.compute_instance]
+  count                 = length(local.lb_instances)
   project               = var.config.project
   ip_protocol           = "TCP"
-  name                  = "${local.lb_instances[count.index][0]}-tcp-fwd-rule"
+  name                  = "${local.lb_instances[count.index].name}-tcp-fwd-rule"
   region                = var.config.region
   load_balancing_scheme = "EXTERNAL"
   port_range            = "443"
   target                = google_compute_target_instance.default[count.index].self_link
   ip_address            = google_compute_address.default[count.index].address
 }
+
+
+# # ----------working block for forwarding rule---------------
+
+# # locals {
+# #   lb_instances = [
+# #     for vm_info in module.compute_instance["dynatrace"].instances_details : [vm_info.name, vm_info.id, vm_info.zone]
+# #   ]
+# # }
+
+# # output "lb_instances" {
+# #   value = local.lb_instances
+# # }
+
+# resource "google_compute_address" "default" {
+#   count   = length(local.lb_instances)
+#   name    = "${local.lb_instances[count.index][0]}-external-ip"
+#   project = var.config.project
+#   region  = var.config.region
+# }
+
+# resource "google_compute_target_instance" "default" {
+#   depends_on = [ module.compute_instance ]
+#   count = length(local.lb_instances)
+#   # for_each = local.lb_servers
+#   project = var.config.project
+#   # zone    = "us-west1-a"
+#   zone = local.lb_instances[count.index][2]
+#   # name     = "${each.key}tcp-target-instance"
+#   name     = "${local.lb_instances[count.index][0]}-tcp-target-instance"
+#   instance = local.lb_instances[count.index][1]
+#   # instance = each.value[0].instances_details[0].id
+
+# }
+
+# resource "google_compute_forwarding_rule" "default" {
+#   depends_on = [ module.compute_instance ]
+#   count = length(local.lb_instances)
+#   # for_each              = local.lb_servers
+#   project               = var.config.project
+#   ip_protocol           = "TCP"
+#   name                  = "${local.lb_instances[count.index][0]}-tcp-fwd-rule"
+#   region                = var.config.region
+#   load_balancing_scheme = "EXTERNAL"
+#   port_range            = "443"
+#   target                = google_compute_target_instance.default[count.index].self_link
+#   ip_address            = google_compute_address.default[count.index].address
+# }
+# # ----------working block for forwarding rule---------------
+
 
 
 output "ip_addresses" {
