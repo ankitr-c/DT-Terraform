@@ -356,31 +356,31 @@ EOT
 
 locals {
   lb_instances = [for vm_info in module.compute_instance["dynatrace"].instances_details : {
-    name = vm_info.name,
-    id   = vm_info.id,
-    zone = vm_info.zone,
+    name       = vm_info.name,
+    id         = vm_info.id,
+    zone       = vm_info.zone,
     ip_address = vm_info.network_interface[0].network_ip
   }]
 }
 
-resource "ansible_playbook" "playbook" {
-  # depends_on = [
-  #   ansible_group.group,
-  #   ansible_host.hosts
-  # ]
-  # depends_on = [null_resource.ansible_instances_connection_check,
-  # null_resource.ansible_inventory_creator]
-  # # for_each   = local.server_key_mapping
-  count      = length(local.lb_instances)
-  playbook   = "dynatrace-playbook.yml"
-  name       = local.instances[count.index].ip_address
-  # groups     = [local.instances[count.index].server]
-  verbosity  = 6
-  replayable = true
-  # extra_vars = {
-  #   inventory = "inventory.ini"
-  # }
-}
+# resource "ansible_playbook" "playbook" {
+#   # depends_on = [
+#   #   ansible_group.group,
+#   #   ansible_host.hosts
+#   # ]
+#   # depends_on = [null_resource.ansible_instances_connection_check,
+#   # null_resource.ansible_inventory_creator]
+#   # # for_each   = local.server_key_mapping
+#   count      = length(local.lb_instances)
+#   playbook   = "dynatrace-playbook.yml"
+#   name       = local.instances[count.index].ip_address
+#   # groups     = [local.instances[count.index].server]
+#   verbosity  = 6
+#   replayable = true
+#   # extra_vars = {
+#   #   inventory = "inventory.ini"
+#   # }
+# }
 
 
 
