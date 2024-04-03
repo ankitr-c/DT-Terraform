@@ -159,7 +159,7 @@ locals {
     flatten(
       [
         for instance_details in vm_info.instances_details :
-        [server_name, instance_details.network_interface[0].network_ip]
+        [server_name, vm_info.network_interface[0].network_ip]
     ]...)
   ]
 
