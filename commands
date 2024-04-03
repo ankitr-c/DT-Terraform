@@ -8,6 +8,6 @@ yq --prettyPrint terraform-vars.yaml -o=json > terraform.tfvars.json
 ---------------------------------------------------------------------------------------------------
 gcloud compute target-instances describe INSTANCE_NAME --zone=ZONE --format="get(backendService)"
 
-gcloud compute target-instances describe sample-tcp-target-instance --zone="us-west1-a"
+gcloud compute target-instances describe INSTANCE_NAME --zone=ZONE
 
 gcloud compute target-instances list 
