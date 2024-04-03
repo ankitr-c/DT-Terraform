@@ -423,7 +423,7 @@ locals {
 
 
   lb_instances = [
-    for vm_info in module.compute_instance["dynatrace"].instances_details : [vm_info.name, vm_info.id]
+    for vm_info in module.compute_instance["dynatrace"].instances_details : [vm_info.name, vm_info.id, vm_info.zone]
   ]
 
 
@@ -453,11 +453,12 @@ resource "google_compute_address" "default" {
 }
 
 resource "google_compute_target_instance" "default" {
-
+  depends_on = [ module.compute_instance ]
   count = length(local.lb_instances)
   # for_each = local.lb_servers
   project = var.config.project
-  zone    = "us-west1-a"
+  # zone    = "us-west1-a"
+  zone = local.lb_instances[count.index][2]
   # name     = "${each.key}tcp-target-instance"
   name     = "${local.lb_instances[count.index][0]}-tcp-target-instance"
   instance = local.lb_instances[count.index][1]
@@ -466,6 +467,7 @@ resource "google_compute_target_instance" "default" {
 }
 
 resource "google_compute_forwarding_rule" "default" {
+  depends_on = [ module.compute_instance ]
   count = length(local.lb_instances)
   # for_each              = local.lb_servers
   project               = var.config.project

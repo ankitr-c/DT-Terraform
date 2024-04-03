@@ -36,7 +36,7 @@ server:
     additional_service_account_roles: []
 
     instance_config:
-      count: 3
+      count: 2
       machine_type: e2-standard-4 # Machine type to create
       allow_stopping_for_update: true # If true, allows Terraform to stop the instance to update its properties
       deletion_protection: false # If true, the instance cannot be deleted
