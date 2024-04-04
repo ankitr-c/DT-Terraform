@@ -212,13 +212,13 @@ module "global_external_address" {
 # }
 
 # Create external IP addresses for each instance
-resource "google_compute_address" "default" {
-  depends_on = [module.compute_instance]
-  count      = length(local.lb_instances)
-  name       = "${local.lb_instances[count.index].name}-external-ip"
-  project    = var.config.project
-  region     = var.config.region
-}
+# resource "google_compute_address" "default" {
+#   depends_on = [module.compute_instance]
+#   count      = length(local.lb_instances)
+#   name       = "${local.lb_instances[count.index].name}-external-ip"
+#   project    = var.config.project
+#   region     = var.config.region
+# }
 
 # Create target instances for load balancing
 resource "google_compute_target_instance" "default" {
@@ -247,9 +247,9 @@ resource "google_compute_forwarding_rule" "default" {
 }
 
 
-output "ip_addresses" {
-  value = google_compute_address.default
-}
+# output "ip_addresses" {
+#   value = google_compute_address.default
+# }
 output "target" {
   value = google_compute_target_instance.default
 }
