@@ -194,13 +194,24 @@ locals {
 #   # insert the 4 required variables here
 # }
 
-module "global_external_address" {
+# module "global_external_address" {
+#   depends_on = [module.compute_instance]
+#   count      = length(local.lb_instances)
+#   source     = "terraform-google-modules/address/google//examples/global_external_address"
+#   version    = "3.2.0"
+#   project_id = var.config.project
+# }
+
+
+################3 ip's###############
+module "regional_external_address" {
   depends_on = [module.compute_instance]
-  count      = length(local.lb_instances)
-  source     = "terraform-google-modules/address/google//examples/global_external_address"
+  # count      = length(local.lb_instances)
+  source     = "terraform-google-modules/address/google//examples/regional_external_address"
   version    = "3.2.0"
   project_id = var.config.project
 }
+################3 ip's###############
 
 # module "ip_address_with_specific_ip" {
 #   depends_on = [module.compute_instance]
@@ -242,7 +253,7 @@ resource "google_compute_forwarding_rule" "default" {
   port_range            = "443"
   target                = google_compute_target_instance.default[count.index].self_link
   # ip_address            = google_compute_address.default[count.index].address
-  ip_address = module.global_external_address[count.index].addresses
+  ip_address = module.regional_external_address.addresses[count.index]
 
 }
 
@@ -258,7 +269,7 @@ output "frd_rule" {
   value = google_compute_forwarding_rule.default
 }
 output "ip_addresses-module" {
-  value = module.global_external_address
+  value = module.regional_external_address
 }
 
 
