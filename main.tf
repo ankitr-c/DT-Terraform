@@ -432,6 +432,9 @@ resource "ansible_group" "group" {
 
 
 resource "ansible_playbook" "playbook" {
+  triggers = {
+    always_run = "${timestamp()}"
+  }
   depends_on = [
     ansible_group.group,
     ansible_host.hosts,
