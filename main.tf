@@ -437,15 +437,16 @@ resource "ansible_playbook" "playbook" {
     ansible_host.hosts,
     module.compute_instance
   ]
-  count      = length(local.lb_instances)
-  playbook   = "dynatrace-playbook.yml"
-  name       = local.instances[count.index].ip_address
+  count    = length(local.lb_instances)
+  playbook = "dynatrace-playbook.yml"
+  name     = local.instances[count.index].ip_address
   # groups     = [ansible_group.group.name]
   verbosity  = 6
   replayable = true
-  # extra_vars = {
-  #   inventory = "inventory.ini"
-  # }
+  extra_vars = {
+    # inventory = "inventory.ini"
+    private_key_file = "./dynatrace_ssh_key.pem"
+  }
 }
 
 
