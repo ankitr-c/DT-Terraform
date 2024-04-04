@@ -432,9 +432,6 @@ resource "ansible_group" "group" {
 
 
 resource "ansible_playbook" "playbook" {
-  triggers = {
-    always_run = "${timestamp()}"
-  }
   depends_on = [
     ansible_group.group,
     ansible_host.hosts,
@@ -447,6 +444,8 @@ resource "ansible_playbook" "playbook" {
   groups     = [ansible_group.group.name]
   verbosity  = 6
   replayable = true
+  # temp_inventory_file = "inventory.ini"
+
   extra_vars = {
     temp_inventory_file = "inventory.ini"
     inventory           = "inventory.ini"
@@ -455,6 +454,10 @@ resource "ansible_playbook" "playbook" {
 }
 
 
+
+output "playbook" {
+  value = ansible_playbook.playbook
+}
 
 # output "groups" {
 #   value = ansible_group.group
