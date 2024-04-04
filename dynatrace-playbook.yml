@@ -16,22 +16,22 @@
         state: started
         enabled: yes
 
-- name: Installing Apache22
-  hosts: /home/ankitraut0987/DT-Terraform/inventory.ini
-  become: true # Required for package installation
+# - name: Installing Apache22
+#   hosts: /home/ankitraut0987/DT-Terraform/inventory.ini
+#   become: true # Required for package installation
 
-  tasks:
-    - name: Update package cache and install Apache
-      yum:
-        name: httpd
-        state: latest
-        #update_cache: yes # Ensure up-to-date package information
+#   tasks:
+#     - name: Update package cache and install Apache
+#       yum:
+#         name: httpd
+#         state: latest
+#         #update_cache: yes # Ensure up-to-date package information
 
-    - name: Start Apache HTTP server
-      service:
-        name: httpd
-        state: started
-        enabled: yes
+#     - name: Start Apache HTTP server
+#       service:
+#         name: httpd
+#         state: started
+#         enabled: yes
 # ---
 # - name: Installing Apache on server1
 #   hosts: apache
