@@ -453,12 +453,6 @@ resource "ansible_playbook" "playbook" {
   }
 }
 
-
-
-output "playbook" {
-  value = ansible_playbook.playbook
-}
-
 # output "groups" {
 #   value = ansible_group.group
 # }
