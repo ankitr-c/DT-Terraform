@@ -445,7 +445,8 @@ resource "ansible_playbook" "playbook" {
   verbosity  = 6
   replayable = true
   extra_vars = {
-    inventory = "inventory.ini"
+    temp_inventory_file = "inventory.ini"
+    # inventory = "inventory.ini"
     #   # private_key_file = "./dynatrace_ssh_key.pem"
   }
 }
