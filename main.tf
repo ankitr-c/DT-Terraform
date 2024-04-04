@@ -389,20 +389,20 @@ locals {
 
 #VIP BLOCK
 
-# resource "null_resource" "ansible_inventory_tester" {
-#   triggers = {
-#     always_run = "${timestamp()}"
-#   }
+resource "null_resource" "ansible_inventory_tester" {
+  triggers = {
+    always_run = "${timestamp()}"
+  }
 
-#   provisioner "local-exec" {
-#     command = <<EOT
-# cat <<EOF > inventory.ini
-# [dynatrace]
-# ${join("\n", [for instance in module.compute_instance["dynatrace"].instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}
-# EOF
-# EOT
-#   }
-# }
+  provisioner "local-exec" {
+    command = <<EOT
+cat <<EOF > inventory.ini
+[dynatrace]
+${join("\n", [for instance in module.compute_instance["dynatrace"].instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}
+EOF
+EOT
+  }
+}
 
 
 locals {
@@ -437,20 +437,15 @@ resource "ansible_playbook" "playbook" {
     ansible_host.hosts,
     module.compute_instance
   ]
-  count = length(local.lb_instances)
-  # depends_on = [null_resource.ansible_instances_connection_check,
-  # null_resource.ansible_inventory_creator]
-  # # for_each   = local.server_key_mapping
-  # count    = length(local.lb_instances)
-  playbook = "dynatrace-playbook.yml"
-  name     = local.instances[count.index].ip_address
-  groups   = [ansible_group.group.name]
-  # groups     = [local.instances[count.index].server]
+  count      = length(local.lb_instances)
+  playbook   = "dynatrace-playbook.yml"
+  name       = local.instances[count.index].ip_address
+  groups     = [ansible_group.group.name]
   verbosity  = 6
   replayable = true
-  # extra_vars = {
-  #   inventory = "inventory.ini"
-  # }
+  extra_vars = {
+    inventory = "inventory.ini"
+  }
 }
 
 
