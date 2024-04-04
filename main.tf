@@ -443,10 +443,10 @@ resource "ansible_playbook" "playbook" {
   # groups     = [ansible_group.group.name]
   verbosity  = 6
   replayable = true
-  extra_vars = {
-    # inventory = "inventory.ini"
-    private_key_file = "./dynatrace_ssh_key.pem"
-  }
+  # extra_vars = {
+  #   # inventory = "inventory.ini"
+  #   # private_key_file = "./dynatrace_ssh_key.pem"
+  # }
 }
 
 
