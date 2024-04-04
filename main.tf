@@ -181,50 +181,86 @@ locals {
 #   }]
 # }
 
-# # Create external IP addresses for each instance
-# resource "google_compute_address" "default" {
+
+#####LEGACY MODULE ISSUE
+# module "ip_address_only" {
 #   depends_on = [module.compute_instance]
 #   count      = length(local.lb_instances)
-#   name       = "${local.lb_instances[count.index].name}-external-ip"
+#   name       = "${local.lb_instances[count.index].name}-external-ip-module"
 #   project    = var.config.project
 #   region     = var.config.region
+#   source     = "terraform-google-modules/address/google//examples/ip_address_only"
+#   version    = "3.2.0"
+#   # insert the 4 required variables here
 # }
 
-# # Create target instances for load balancing
-# resource "google_compute_target_instance" "default" {
+module "global_external_address" {
+  depends_on = [module.compute_instance]
+  count      = length(local.lb_instances)
+  source     = "terraform-google-modules/address/google//examples/global_external_address"
+  version    = "3.2.0"
+  project_id = var.config.project
+}
+
+# module "ip_address_with_specific_ip" {
 #   depends_on = [module.compute_instance]
-#   count      = length(local.lb_instances)
-#   project    = var.config.project
-#   zone       = local.lb_instances[count.index].zone
-#   name       = "${local.lb_instances[count.index].name}-tcp-target-instance"
-#   instance   = local.lb_instances[count.index].id
+#   source     = "terraform-google-modules/address/google//examples/ip_address_with_specific_ip"
+#   version    = "3.2.0"
+#   project_id = var.config.project
+#   names      = []
+#   addresses =[]
 # }
 
-# # Create forwarding rules for directing traffic to the target instances
-# resource "google_compute_forwarding_rule" "default" {
-#   depends_on            = [module.compute_instance]
-#   count                 = length(local.lb_instances)
-#   project               = var.config.project
-#   ip_protocol           = "TCP"
-#   name                  = "${local.lb_instances[count.index].name}-tcp-fwd-rule"
-#   region                = var.config.region
-#   load_balancing_scheme = "EXTERNAL"
-#   port_range            = "443"
-#   target                = google_compute_target_instance.default[count.index].self_link
-#   ip_address            = google_compute_address.default[count.index].address
-# }
+# Create external IP addresses for each instance
+resource "google_compute_address" "default" {
+  depends_on = [module.compute_instance]
+  count      = length(local.lb_instances)
+  name       = "${local.lb_instances[count.index].name}-external-ip"
+  project    = var.config.project
+  region     = var.config.region
+}
+
+# Create target instances for load balancing
+resource "google_compute_target_instance" "default" {
+  depends_on = [module.compute_instance]
+  count      = length(local.lb_instances)
+  project    = var.config.project
+  zone       = local.lb_instances[count.index].zone
+  name       = "${local.lb_instances[count.index].name}-tcp-target-instance"
+  instance   = local.lb_instances[count.index].id
+}
+
+# Create forwarding rules for directing traffic to the target instances
+resource "google_compute_forwarding_rule" "default" {
+  depends_on            = [module.compute_instance]
+  count                 = length(local.lb_instances)
+  project               = var.config.project
+  ip_protocol           = "TCP"
+  name                  = "${local.lb_instances[count.index].name}-tcp-fwd-rule"
+  region                = var.config.region
+  load_balancing_scheme = "EXTERNAL"
+  port_range            = "443"
+  target                = google_compute_target_instance.default[count.index].self_link
+  # ip_address            = google_compute_address.default[count.index].address
+  ip_address = module.global_external_address[count.index].addresses
+
+}
 
 
-# output "ip_addresses" {
-#   value = google_compute_address.default
-# }
-# output "target" {
-#   value = google_compute_target_instance.default
-# }
+output "ip_addresses" {
+  value = google_compute_address.default
+}
+output "target" {
+  value = google_compute_target_instance.default
+}
 
-# output "frd_rule" {
-#   value = google_compute_forwarding_rule.default
-# }
+output "frd_rule" {
+  value = google_compute_forwarding_rule.default
+}
+output "ip_addresses-module" {
+  value = module.global_external_address
+}
+
 
 # output "compute-op" {
 #   value = module.compute_instance["dynatrace"].instances_details[0].hostname
@@ -323,35 +359,38 @@ locals {
 #   name     = each.key
 # }
 
+# ######################################################
+# resource "null_resource" "ansible_inventory_creator" {
+#   triggers = {
+#     always_run = "${timestamp()}"
+#   }
 
-resource "null_resource" "ansible_inventory_creator" {
-  triggers = {
-    always_run = "${timestamp()}"
-  }
+#   provisioner "local-exec" {
+#     command = <<EOT
+# cat <<EOF > inventory.ini
+# ${join("\n", [for server_name, data in module.compute_instance : "[${server_name}]\n${join("\n", [for instance in data.instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}"])}
+# EOF
+# EOT
+#   }
+# }
+# ######################################################
 
-  provisioner "local-exec" {
-    command = <<EOT
-cat <<EOF > inventory.ini
-${join("\n", [for server_name, data in module.compute_instance : "[${server_name}]\n${join("\n", [for instance in data.instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}"])}
-EOF
-EOT
-  }
-}
+#VIP BLOCK
 
-resource "null_resource" "ansible_inventory_tester" {
-  triggers = {
-    always_run = "${timestamp()}"
-  }
+# resource "null_resource" "ansible_inventory_tester" {
+#   triggers = {
+#     always_run = "${timestamp()}"
+#   }
 
-  provisioner "local-exec" {
-    command = <<EOT
-cat <<EOF > inventory_test.ini
-[dt]
-${join("\n", [for instance in module.compute_instance["dynatrace"].instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}
-EOF
-EOT
-  }
-}
+#   provisioner "local-exec" {
+#     command = <<EOT
+# cat <<EOF > inventory.ini
+# [dynatrace]
+# ${join("\n", [for instance in module.compute_instance["dynatrace"].instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}
+# EOF
+# EOT
+#   }
+# }
 
 
 locals {
