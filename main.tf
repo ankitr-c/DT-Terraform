@@ -203,14 +203,14 @@ locals {
 # }
 
 
-################3 ip's###############
-module "regional_external_address" {
-  depends_on = [module.compute_instance]
-  # count      = length(local.lb_instances)
-  source     = "terraform-google-modules/address/google//examples/regional_external_address"
-  version    = "3.2.0"
-  project_id = var.config.project
-}
+# ################3 ip's###############
+# module "regional_external_address" {
+#   depends_on = [module.compute_instance]
+#   # count      = length(local.lb_instances)
+#   source     = "terraform-google-modules/address/google//examples/regional_external_address"
+#   version    = "3.2.0"
+#   project_id = var.config.project
+# }
 ################3 ip's###############
 
 # module "ip_address_with_specific_ip" {
@@ -221,7 +221,7 @@ module "regional_external_address" {
 #   names      = []
 #   addresses =[]
 # }
-
+##############WORKING BLOCK#############
 # Create external IP addresses for each instance
 # resource "google_compute_address" "default" {
 #   depends_on = [module.compute_instance]
@@ -232,46 +232,47 @@ module "regional_external_address" {
 # }
 
 # Create target instances for load balancing
-resource "google_compute_target_instance" "default" {
-  depends_on = [module.compute_instance]
-  count      = length(local.lb_instances)
-  project    = var.config.project
-  zone       = local.lb_instances[count.index].zone
-  name       = "${local.lb_instances[count.index].name}-tcp-target-instance"
-  instance   = local.lb_instances[count.index].id
-}
-
-# Create forwarding rules for directing traffic to the target instances
-resource "google_compute_forwarding_rule" "default" {
-  depends_on            = [module.compute_instance]
-  count                 = length(local.lb_instances)
-  project               = var.config.project
-  ip_protocol           = "TCP"
-  name                  = "${local.lb_instances[count.index].name}-tcp-fwd-rule"
-  region                = var.config.region
-  load_balancing_scheme = "EXTERNAL"
-  port_range            = "443"
-  target                = google_compute_target_instance.default[count.index].self_link
-  # ip_address            = google_compute_address.default[count.index].address
-  ip_address = module.regional_external_address.addresses[count.index]
-
-}
-
-
-# output "ip_addresses" {
-#   value = google_compute_address.default
+# resource "google_compute_target_instance" "default" {
+#   depends_on = [module.compute_instance]
+#   count      = length(local.lb_instances)
+#   project    = var.config.project
+#   zone       = local.lb_instances[count.index].zone
+#   name       = "${local.lb_instances[count.index].name}-tcp-target-instance"
+#   instance   = local.lb_instances[count.index].id
 # }
-output "target" {
-  value = google_compute_target_instance.default
-}
 
-output "frd_rule" {
-  value = google_compute_forwarding_rule.default
-}
-output "ip_addresses-module" {
-  value = module.regional_external_address
-}
+# # Create forwarding rules for directing traffic to the target instances
+# resource "google_compute_forwarding_rule" "default" {
+#   depends_on            = [module.compute_instance]
+#   count                 = length(local.lb_instances)
+#   project               = var.config.project
+#   ip_protocol           = "TCP"
+#   name                  = "${local.lb_instances[count.index].name}-tcp-fwd-rule"
+#   region                = var.config.region
+#   load_balancing_scheme = "EXTERNAL"
+#   port_range            = "443"
+#   target                = google_compute_target_instance.default[count.index].self_link
+#   # ip_address            = google_compute_address.default[count.index].address
+#   ip_address = module.regional_external_address.addresses[count.index]
 
+# }
+
+
+# # output "ip_addresses" {
+# #   value = google_compute_address.default
+# # }
+# output "target" {
+#   value = google_compute_target_instance.default
+# }
+
+# output "frd_rule" {
+#   value = google_compute_forwarding_rule.default
+# }
+# output "ip_addresses-module" {
+#   value = module.regional_external_address
+# }
+
+##############WORKING BLOCK#############
 
 # output "compute-op" {
 #   value = module.compute_instance["dynatrace"].instances_details[0].hostname
@@ -413,24 +414,43 @@ locals {
   }]
 }
 
-# resource "ansible_playbook" "playbook" {
-#   # depends_on = [
-#   #   ansible_group.group,
-#   #   ansible_host.hosts
-#   # ]
-#   # depends_on = [null_resource.ansible_instances_connection_check,
-#   # null_resource.ansible_inventory_creator]
-#   # # for_each   = local.server_key_mapping
-#   count      = length(local.lb_instances)
-#   playbook   = "dynatrace-playbook.yml"
-#   name       = local.instances[count.index].ip_address
-#   # groups     = [local.instances[count.index].server]
-#   verbosity  = 6
-#   replayable = true
-#   # extra_vars = {
-#   #   inventory = "inventory.ini"
-#   # }
-# }
+resource "ansible_host" "hosts" {
+  count  = length(local.lb_instances)
+  name   = local.lb_instances[count.index].ip_address
+  groups = ["dynatrace"]
+  variables = {
+    ansible_user                 = "centos",
+    ansible_ssh_private_key_file = "dynatrace_ssh_key.pem",
+    ansible_python_interpreter   = "/usr/bin/python3"
+  }
+}
+
+
+resource "ansible_group" "group" {
+  name = "dyantrace"
+}
+
+
+resource "ansible_playbook" "playbook" {
+  depends_on = [
+    ansible_group.group,
+    ansible_host.hosts,
+    module.compute_instance
+  ]
+  # depends_on = [null_resource.ansible_instances_connection_check,
+  # null_resource.ansible_inventory_creator]
+  # # for_each   = local.server_key_mapping
+  # count    = length(local.lb_instances)
+  playbook = "dynatrace-playbook.yml"
+  # name     = local.instances[count.index].ip_address
+  group = [ansible_group.group]
+  # groups     = [local.instances[count.index].server]
+  verbosity  = 6
+  replayable = true
+  # extra_vars = {
+  #   inventory = "inventory.ini"
+  # }
+}
 
 
 
