@@ -444,7 +444,7 @@ resource "ansible_playbook" "playbook" {
   # count    = length(local.lb_instances)
   playbook = "dynatrace-playbook.yml"
   name     = local.instances[count.index].ip_address
-  groups = [ansible_group.group]
+  groups   = [ansible_group.group.name]
   # groups     = [local.instances[count.index].server]
   verbosity  = 6
   replayable = true
