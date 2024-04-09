@@ -129,15 +129,15 @@ resource "google_compute_firewall" "rule" {
 
 locals {
 
-  server_list = [for server_name, vm_info in module.compute_instance : server_name]
+  # server_list = [for server_name, vm_info in module.compute_instance : server_name]
 
-  all_vms = concat([
-    for server_name, vm_info in module.compute_instance :
-    [
-      for instance_details in vm_info.instances_details :
-      [server_name, instance_details.network_interface[0].network_ip, instance_details.id]
-    ]
-  ]...)
+  # all_vms = concat([
+  #   for server_name, vm_info in module.compute_instance :
+  #   [
+  #     for instance_details in vm_info.instances_details :
+  #     [server_name, instance_details.network_interface[0].network_ip, instance_details.id]
+  #   ]
+  # ]...)
 
 
 }
@@ -181,6 +181,17 @@ locals {
 #   }]
 # }
 
+locals {
+  lb_instances = [for vm_info in module.compute_instance["dynatrace"].instances_details : {
+    name       = vm_info.name,
+    id         = vm_info.id,
+    zone       = vm_info.zone,
+    ip_address = vm_info.network_interface[0].network_ip
+  }]
+
+  # vm_instances = [for vm_info in module.compute_instance["dynatrace"].instances_details : vm_info.id]
+}
+
 
 #####LEGACY MODULE ISSUE
 # module "ip_address_only" {
@@ -221,9 +232,27 @@ locals {
 #   names      = []
 #   addresses =[]
 # }
-##############WORKING BLOCK#############
-# Create external IP addresses for each instance
-# resource "google_compute_address" "default" {
+
+
+# module "gce-lb-fr" {
+#   source       = "GoogleCloudPlatform/lb/google"
+#   version      = "~> 4.0"
+#   region       = var.config.region
+#   network      = "default"
+#   project      = var.config.project
+#   name         = "group1-lb"
+#   service_port = "80"
+#   target_tags  = ["allow-group1"]
+# }
+
+
+
+###################SELF DECLARED MODULES####################
+
+
+# module "compute_external_ip_address" {
+#   source     = "ankitr-c/compute_external_ip_address/google"
+#   version    = "1.0.1"
 #   depends_on = [module.compute_instance]
 #   count      = length(local.lb_instances)
 #   name       = "${local.lb_instances[count.index].name}-external-ip"
@@ -231,43 +260,82 @@ locals {
 #   region     = var.config.region
 # }
 
+# module "compute_target_instance" {
+#   source      = "ankitr-c/compute_target_instance/google"
+#   version     = "1.0.1"
+#   depends_on  = [module.compute_instance]
+#   count       = length(local.lb_instances)
+#   project     = var.config.project
+#   zone        = local.lb_instances[count.index].zone
+#   name        = "${local.lb_instances[count.index].name}-tcp-target-instance"
+#   instance_id = local.lb_instances[count.index].id
+# }
+
+
+# module "compute_forwarding_rule_for_target" {
+#   source                         = "ankitr-c/compute_forwarding_rule_for_target/google"
+#   version                        = "1.0.0"
+#   depends_on                     = [module.compute_instance]
+#   count                          = length(local.lb_instances)
+#   project                        = var.config.project
+#   name                           = "${local.lb_instances[count.index].name}-tcp-fwd-rule"
+#   region                         = var.config.region
+#   port_range                     = "443"
+#   google_compute_target_instance = module.compute_target_instance[count.index].self_link
+#   ip_address                     = module.compute_external_ip_address[count.index].ip_address
+# }
+
+##############SELF MODULES####################
+
+
+#############WORKING BLOCK#############
+# Create external IP addresses for each instance
+resource "google_compute_address" "default" {
+  depends_on = [module.compute_instance]
+  count      = length(local.lb_instances)
+  name       = "${local.lb_instances[count.index].name}-external-ip"
+  project    = var.config.project
+  region     = var.config.region
+}
+
 # Create target instances for load balancing
-# resource "google_compute_target_instance" "default" {
-#   depends_on = [module.compute_instance]
-#   count      = length(local.lb_instances)
-#   project    = var.config.project
-#   zone       = local.lb_instances[count.index].zone
-#   name       = "${local.lb_instances[count.index].name}-tcp-target-instance"
-#   instance   = local.lb_instances[count.index].id
-# }
-
-# # Create forwarding rules for directing traffic to the target instances
-# resource "google_compute_forwarding_rule" "default" {
-#   depends_on            = [module.compute_instance]
-#   count                 = length(local.lb_instances)
-#   project               = var.config.project
-#   ip_protocol           = "TCP"
-#   name                  = "${local.lb_instances[count.index].name}-tcp-fwd-rule"
-#   region                = var.config.region
-#   load_balancing_scheme = "EXTERNAL"
-#   port_range            = "443"
-#   target                = google_compute_target_instance.default[count.index].self_link
-#   # ip_address            = google_compute_address.default[count.index].address
-#   ip_address = module.regional_external_address.addresses[count.index]
-
-# }
+resource "google_compute_target_instance" "default" {
+  depends_on = [module.compute_instance]
+  count      = length(local.lb_instances)
+  project    = var.config.project
+  zone       = local.lb_instances[count.index].zone
+  name       = "${local.lb_instances[count.index].name}-tcp-target-instance"
+  instance   = local.lb_instances[count.index].id
+}
 
 
-# # output "ip_addresses" {
-# #   value = google_compute_address.default
-# # }
-# output "target" {
-#   value = google_compute_target_instance.default
-# }
+# Create forwarding rules for directing traffic to the target instances
+resource "google_compute_forwarding_rule" "default" {
+  depends_on            = [module.compute_instance]
+  count                 = length(local.lb_instances)
+  project               = var.config.project
+  ip_protocol           = "TCP"
+  name                  = "${local.lb_instances[count.index].name}-tcp-fwd-rule"
+  region                = var.config.region
+  load_balancing_scheme = "EXTERNAL"
+  port_range            = "443"
+  target                = google_compute_target_instance.default[count.index].self_link
+  ip_address            = google_compute_address.default[count.index].address
+  # ip_address = module.regional_external_address.addresses[count.index]
 
-# output "frd_rule" {
-#   value = google_compute_forwarding_rule.default
-# }
+}
+
+
+output "ip_addresses" {
+  value = google_compute_address.default
+}
+output "target" {
+  value = google_compute_target_instance.default
+}
+
+output "frd_rule" {
+  value = google_compute_forwarding_rule.default
+}
 # output "ip_addresses-module" {
 #   value = module.regional_external_address
 # }
@@ -294,51 +362,56 @@ locals {
 # ]
 
 
-locals {
-  # instances = [
-  #   for server_name, vm_info in module.compute_instance :
-  #   flatten(
-  #     [
-  #       for instance_details in vm_info.instances_details :
-  #       {
-  #         server     = server_name
-  #         ip_address = instance_details.network_interface[0].network_ip
-  #       }
-  #   ]...)
-  # ]
+# locals {
+# instances = [
+#   for server_name, vm_info in module.compute_instance :
+#   flatten(
+#     [
+#       for instance_details in vm_info.instances_details :
+#       {
+#         server     = server_name
+#         ip_address = instance_details.network_interface[0].network_ip
+#       }
+#   ]...)
+# ]
 
-  # instances = [
-  #   for server_name, vm_info in module.compute_instance :
-  #   flatten([
-  #     for instance_details in vm_info.instances_details :
-  #     {
-  #       server     = server_name
-  #       ip_address = instance_details.network_interface[0].network_ip
-  #     }
-  #   ])
-  # ]
-
-  instances = flatten([
-    for server_name, vm_info in module.compute_instance :
-    [
-      for instance_details in vm_info.instances_details :
-      {
-        server     = server_name
-        ip_address = instance_details.network_interface[0].network_ip
-      }
-    ]
-  ])
+# instances = [
+#   for server_name, vm_info in module.compute_instance :
+#   flatten([
+#     for instance_details in vm_info.instances_details :
+#     {
+#       server     = server_name
+#       ip_address = instance_details.network_interface[0].network_ip
+#     }
+#   ])
+# ]
 
 
-  server_key_mapping = {
-    for server_name, vm_info in module.compute_instance :
-    server_name => [
-      for instance_details in vm_info.instances_details :
-      instance_details.network_interface[0].network_ip
-    ]
-  }
+############TEMP LOCK############
+#   instances = flatten([
+#     for server_name, vm_info in module.compute_instance :
+#     [
+#       for instance_details in vm_info.instances_details :
+#       {
+#         server     = server_name
+#         ip_address = instance_details.network_interface[0].network_ip
+#       }
+#     ]
+#   ])
 
-}
+
+#   server_key_mapping = {
+#     for server_name, vm_info in module.compute_instance :
+#     server_name => [
+#       for instance_details in vm_info.instances_details :
+#       instance_details.network_interface[0].network_ip
+#     ]
+#   }
+
+# }
+
+############TEMP LOCK############
+
 
 # resource "null_resource" "ansible_instances_connection_check" {
 #   depends_on = [module.compute_instance]
@@ -389,59 +462,61 @@ locals {
 
 #VIP BLOCK
 
-resource "null_resource" "ansible_inventory_tester" {
-  triggers = {
-    always_run = "${timestamp()}"
-  }
 
-  provisioner "local-exec" {
-    command = <<EOT
-cat <<EOF > inventory.ini
-[dynatrace]
-${join("\n", [for instance in module.compute_instance["dynatrace"].instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}
-EOF
-EOT
-  }
-}
+################VIP ANSIBLE TESTING########################
+# resource "null_resource" "ansible_inventory_tester" {
+#   triggers = {
+#     always_run = "${timestamp()}"
+#   }
 
-
-locals {
-  lb_instances = [for vm_info in module.compute_instance["dynatrace"].instances_details : {
-    name       = vm_info.name,
-    id         = vm_info.id,
-    zone       = vm_info.zone,
-    ip_address = vm_info.network_interface[0].network_ip
-  }]
-}
-
-resource "ansible_host" "hosts" {
-  count  = length(local.lb_instances)
-  name   = local.lb_instances[count.index].ip_address
-  groups = ["dynatrace"]
-  variables = {
-    ansible_user                 = "centos",
-    ansible_ssh_private_key_file = "dynatrace_ssh_key.pem",
-    ansible_python_interpreter   = "/usr/bin/python3"
-  }
-}
+#   provisioner "local-exec" {
+#     command = <<EOT
+# cat <<EOF > inventory.ini
+# [dynatrace]
+# ${join("\n", [for instance in module.compute_instance["dynatrace"].instances_details : "${instance.name} ansible_host=${instance.network_interface[0].network_ip}"])}
+# EOF
+# EOT
+#   }
+# }
 
 
-resource "ansible_group" "group" {
-  name = "dyantrace"
-}
+# locals {
+#   lb_instances = [for vm_info in module.compute_instance["dynatrace"].instances_details : {
+#     name       = vm_info.name,
+#     id         = vm_info.id,
+#     zone       = vm_info.zone,
+#     ip_address = vm_info.network_interface[0].network_ip
+#   }]
+# }
+
+# resource "ansible_host" "hosts" {
+#   count  = length(local.lb_instances)
+#   name   = local.lb_instances[count.index].ip_address
+#   groups = ["dynatrace"]
+#   variables = {
+#     ansible_user                 = "centos",
+#     ansible_ssh_private_key_file = "dynatrace_ssh_key.pem",
+#     ansible_python_interpreter   = "/usr/bin/python3"
+#   }
+# }
+
+
+# resource "ansible_group" "group" {
+#   name = "dyantrace"
+# }
 
 
 resource "ansible_playbook" "playbook" {
   depends_on = [
-    ansible_group.group,
-    ansible_host.hosts,
+    # ansible_group.group,
+    # ansible_host.hosts,
     module.compute_instance
   ]
   count    = length(local.lb_instances)
   playbook = "dynatrace-playbook.yml"
-  name     = local.instances[count.index].ip_address
+  name     = local.lb_instances[count.index].ip_address
   # name       = local.instances[0].ip_address
-  groups     = [ansible_group.group.name]
+  # groups     = [ansible_group.group.name]
   verbosity  = 6
   replayable = true
   # temp_inventory_file = "inventory.ini"
@@ -461,17 +536,20 @@ resource "ansible_playbook" "playbook" {
 #   value = ansible_host.hosts
 # }
 
-output "instances" {
-  value = local.instances
-}
+# ------------------
+# output "instances" {
+#   value = local.instances
+# }
 
-output "key_mapping" {
-  value = local.server_key_mapping
-}
-
+# output "key_mapping" {
+#   value = local.server_key_mapping
+# }
+# ----------------------
 # output "instances_name" {
 #   value = local.instances_hosts
 # }
+
+################VIP ANSIBLE TESTING########################
 
 
 
