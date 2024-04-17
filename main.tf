@@ -86,6 +86,10 @@ data "external" "execute_script" {
   }
 }
 
+output "query_op" {
+  value = data.external.execute_script.query
+}
+
 locals {
   instance_data = [
     for instance_key, instance_value in local.servers : [
@@ -224,7 +228,7 @@ module "firewall_rules" {
     description = null
     direction   = "INGRESS"
     priority    = 1000
-    ranges      = ["130.211.0.0/22","35.191.0.0/16"]
+    ranges      = ["130.211.0.0/22", "35.191.0.0/16"]
     # target_tags = each.value.tags
     allow = [{
       protocol = "TCP"
