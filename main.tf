@@ -73,7 +73,7 @@ module "compute_instance" {
 data "external" "execute_script" {
   depends_on = [module.compute_instance]
 
-  program = ["bash", "path/to/your/external_script.sh"]
+  program = ["bash", "external_script.sh"]
 
   query = {
     instance_data = jsonencode(flatten([
