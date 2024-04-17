@@ -1,7 +1,7 @@
-# data "google_compute_zones" "available" {
-#   project = var.config.project
-#   region  = var.config.region
-# }
+# # data "google_compute_zones" "available" {
+# #   project = var.config.project
+# #   region  = var.config.region
+# # }
 
 locals {
   default_roles = [
@@ -33,19 +33,108 @@ locals {
     for idx, instance_config in var.server : instance_config.name => instance_config
   }
 }
+output "servers" {
+  value = local.servers
+}
 
 module "compute_instance" {
-  source              = "terraform-google-modules/vm/google//modules/compute_instance"
-  version             = "~>9.0.0"
-  for_each            = local.servers
-  region              = var.config.region
-  hostname            = "${var.app.env}-${each.key}"
-  instance_template   = module.instance_template[each.key].self_link
-  num_instances       = each.value.instance_config.count
+  source            = "terraform-google-modules/vm/google//modules/compute_instance"
+  version           = "~>9.0.0"
+  for_each          = local.servers
+  region            = var.config.region
+  hostname          = "${var.app.env}-${each.key}"
+  instance_template = module.instance_template[each.key].self_link
+  # num_instances       = each.value.instance_config.count
   deletion_protection = false
   subnetwork          = var.network.subnet
   subnetwork_project  = var.network.project
+
+  # provisioner "local-exec" {
+  #   command = "ssh ${each.value.instance_config.gce_user}@${("${var.app.env}-${each.key}-001")} && git clone ${each.instance_config.link}"
+  # }
 }
+
+# data "external" "execute_script" {
+#   depends_on = [module.compute_instance]
+
+#   program = ["bash", "path/to/your/external_script.sh"]
+
+#   query = {
+#   instance_data = jsonencode([
+#     for instance_key, instance_value in local.servers : [      
+#       module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
+#       local.servers[instance_key].instance_config.gce_user,
+#       local.servers[instance_key].instance_config.link
+#     ]
+#   ])
+#   }
+# }
+
+data "external" "execute_script" {
+  depends_on = [module.compute_instance]
+
+  program = ["bash", "path/to/your/external_script.sh"]
+
+  query = {
+    instance_data = jsonencode(flatten([
+      for instance_key, instance_value in local.servers : {
+        ip   = module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
+        user = local.servers[instance_key].instance_config.gce_user,
+        link = local.servers[instance_key].instance_config.link,
+      }
+    ]))
+  }
+}
+
+locals {
+  instance_data = [
+    for instance_key, instance_value in local.servers : [
+      # module.compute_instance[instance_key].instances_details.network_interface[0].network_ip,
+      module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
+      local.servers[instance_key].instance_config.gce_user,
+      local.servers[instance_key].instance_config.link
+    ]
+  ]
+}
+
+output "instance_data" {
+  value = local.instance_data
+
+}
+
+# output "sample" {
+#   value = module.compute_instance["dt"].instances_details[0].network_interface[0].network_ip
+# }
+
+# locals {
+#   servers = {
+#     for idx, instance_config in var.server : instance_config.name => instance_config
+#   }
+# }
+
+# resource "google_compute_instance" "compute_instances" {
+#   count = length(local.servers)
+
+#   name         = "${var.app.env}-${local.servers[count.index].name}-001"
+#   machine_type = local.servers[count.index].machine_type
+#   zone         = local.servers[count.index].zone
+
+#   metadata_startup_script = "git clone ${local.servers[count.index].link}"
+
+#   provisioner "remote-exec" {
+#     inline = [
+#       "chmod +x /tmp/startup-script.sh",
+#       "sudo /tmp/startup-script.sh",
+#     ]
+
+#     connection {
+#       type        = "ssh"
+#       user        = local.servers[count.index].gce_user
+#       host        = self.network_interface[0].access_config[0].nat_ip
+#       private_key = file(var.ssh_private_key_path)
+#     }
+#   }
+# }
 
 
 module "instance_template" {
@@ -62,10 +151,10 @@ module "instance_template" {
   subnetwork_project = var.network.project
   labels             = merge(var.app.labels, each.value.labels)
 
-  metadata = each.value.instance_config.os_type == "linux" ? {
-    sshKeys                = each.value.instance_config.os_type == "linux" ? "${each.value.instance_config.gce_user}:${tls_private_key.private_key_pair[each.key].public_key_openssh}" : ""
-    block-project-ssh-keys = true
-  } : {}
+  # metadata = each.value.instance_config.os_type == "linux" ? {
+  #   sshKeys                = each.value.instance_config.os_type == "linux" ? "${each.value.instance_config.gce_user}:${tls_private_key.private_key_pair[each.key].public_key_openssh}" : ""
+  #   block-project-ssh-keys = true
+  # } : {}
 
 
   service_account = {
@@ -126,6 +215,526 @@ resource "google_compute_firewall" "rule" {
   }
 }
 
+module "firewall_rules" {
+  source       = "terraform-google-modules/network/google//modules/firewall-rules"
+  project_id   = var.config.project
+  network_name = "default" #module.vpc.network_name
+  rules = [{
+    name        = "allow-iap-traffic"
+    description = null
+    direction   = "INGRESS"
+    priority    = 1000
+    ranges      = ["130.211.0.0/22","35.191.0.0/16"]
+    # target_tags = each.value.tags
+    allow = [{
+      protocol = "TCP"
+      ports    = ["80"]
+    }]
+    deny = []
+    log_config = {
+      metadata = "INCLUDE_ALL_METADATA"
+    }
+  }]
+}
+
+# XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+# resource "google_compute_firewall" "example" {
+#   name          = "from-cloudflare"
+#   network       = "default"
+#   project       = var.config.project
+#   source_ranges = data.cloudflare_ip_ranges.cloudflare.ipv4_cidr_blocks
+
+#   allow {
+#     ports    = ["443"]
+#     protocol = "tcp"
+#   }
+# }
+
+# resource "google_compute_firewall" "rule" {
+#   for_each      = { for rule in local.firewall_rules_flat : "${rule.server_name}-${rule.rule_name}" => rule }
+#   name          = each.value.rule_name
+#   network       = var.network.vpc
+#   source_ranges = concat(each.value.source_ranges, data.cloudflare_ip_ranges.cloudflare.ipv4_cidr_blocks)
+#   target_tags   = each.value.tags
+#   direction     = try(each.value.direction, "INGRESS")
+#   priority      = try(each.value.priority, 1000)
+#   allow {
+#     protocol = each.value.protocol
+#     ports    = each.value.ports
+#   }
+# }
+
+# module firewall me [parameter **rule**] ka data-structure:
+# rules = [
+#   {
+#     name                   = string
+#     description            = optional(string, null)
+#     direction              = optional(string, "INGRESS")
+#     disabled               = optional(bool, null)
+#     priority               = optional(number, null)
+#     ranges                 = optional(list(string), [])
+#     source_tags            = optional(list(string))
+#     source_service_accounts = optional(list(string))
+#     target_tags            = optional(list(string))
+#     target_service_accounts = optional(list(string))
+#     allow                  = optional(list(object({
+#       protocol = string
+#       ports    = optional(list(string))
+#     })), [])
+#     deny                   = optional(list(object({
+#       protocol = string
+#       ports    = optional(list(string))
+#     })), [])
+#     log_config             = optional(object({
+#       metadata = string
+#     }))
+#   }
+# ]
+
+
+# XXXXXXXXX---cloudflare ip---XXXXXXXXXXXX
+
+# data "cloudflare_ip_ranges" "cloudflare" {}
+
+# data "http" "example" {
+#   url = "https://www.cloudflare.com/ips-v4"
+
+#   # Optional request headers
+#   request_headers = {
+#     Accept = "application/json"
+#   }
+# }
+
+
+# locals {
+#   firewall_rules_flat = flatten([
+#     for server in var.server : [
+#       for rule in server.instance_config.firewall_rules : {
+#         server_name   = server.name, # This attribute must exist in every object
+#         rule_name     = rule.name,
+#         direction     = rule.direction,
+#         ports         = rule.ports,
+#         source_ranges = rule.source_ranges
+#         protocol      = rule.protocol
+#         tags          = server.tags
+#       }
+#     ]
+#   ])
+
+
+# }
+
+
+# locals {
+#   map_loops = {
+#     for value in flatten([
+#       for server in var.server : [
+#         for rule in server.instance_config.firewall_rules : {
+#           server_name   = server.name, # This attribute must exist in every object
+#           rule_name     = rule.name,
+#           direction     = rule.direction,
+#           ports         = rule.ports,
+#           source_ranges = rule.source_ranges
+#           protocol      = rule.protocol
+#           tags          = server.tags
+#         }
+#       ]
+#     ]) : "${value.server_name}-${value.rule_name}" => value
+#   }
+
+#   # ip_cidrs = split("\n", data.http.example.response_body)
+
+# }
+
+# module "firewall_rules" {
+#   source       = "terraform-google-modules/network/google//modules/firewall-rules"
+#   project_id   = var.config.project
+#   network_name = "default" #module.vpc.network_name
+#   for_each     = { for rule in local.firewall_rules_flat : "${rule.server_name}-${rule.rule_name}" => rule }
+#   # for_each = local.map_loops
+#   rules = [{
+#     name        = each.value.rule_name
+#     description = null
+#     direction   = try(each.value.direction, "INGRESS")
+#     priority    = try(each.value.priority, 1000)
+#     ranges      = each.value.source_ranges
+#     # source_tags             = null
+#     # source_service_accounts = null
+#     target_tags = each.value.tags
+#     # target_service_accounts = null
+#     allow = [{
+#       protocol = each.value.protocol
+#       ports    = each.value.ports
+#     }]
+#     deny = []
+#     log_config = {
+#       metadata = "INCLUDE_ALL_METADATA"
+#     }
+#   }]
+# }
+
+
+
+# data "http" "example" {
+#   url = "https://www.cloudflare.com/ips-v4"
+
+#   request_headers = {
+#     Accept = "application/json"
+#   }
+# }
+
+# module "firewall_rule-cloudflare" {
+#   source       = "terraform-google-modules/network/google//modules/firewall-rules"
+#   project_id   = var.config.project
+#   network_name = "default" 
+#   rules = [{
+#     name        = "fw-dynatrace-app-cloudflare-traffic-v2"
+#     description = null
+#     direction   = "INGRESS"
+#     priority    = 1000
+#     ranges      = split("\n", data.http.example.response_body)
+#     target_tags = ["dynatrace"]
+#     allow = [{
+#       protocol = "TCP"
+#       ports    = ["443", "80"]
+#     }]
+#     deny = []
+#     log_config = {
+#       metadata = "INCLUDE_ALL_METADATA"
+#     }
+#   }]
+# }
+
+
+# output "ip_cidrs" {
+#   value = data.http.example
+# }
+
+# XXXXXXXXX---cloudflare ip---XXXXXXXXXXXX
+
+# locals {
+#   key_val = { for rule in local.firewall_rules_flat : "${rule.server_name}-${rule.rule_name}" => rule }
+# }
+# output "key_val" {
+#   value = local.key_val
+# }
+
+# output "cidrs" {
+#   value = google_compute_firewall.rule
+# }
+
+
+# output "firewall_rules" {
+#   value = module.firewall_rules
+# }
+
+# output "firewall_rules_ip_ranges" {
+#   value = module.firewall_rules["dynatrace-fw-dynatrace-app-traffic-v2"].firewall_rules.fw-dynatrace-app-traffic-v2.source_ranges
+# }
+
+# output "pass_rules" {
+#   value = toset([concat(local.firewall_rules_flat[0].source_ranges, data.cloudflare_ip_ranges.cloudflare.ipv4_cidr_blocks)])
+# }
+
+# output "flat_firewall" {
+#   value = local.firewall_rules_flat
+# }
+
+
+# output "cloudflareip" {
+#   value = data.cloudflare_ip_ranges.cloudflare.ipv4_cidr_blocks
+# }
+
+# XXXXXXXXXXXXXXXXXXXXX
+
+
+# output "firewall_rules_flat" {
+#   value = local.firewall_rules_flat
+# }
+
+
+# XXXXXXXXXXXXXX---FILE STORE---XXXXXXXXXXXXXXXXX
+
+
+
+# # Reserve an IP CIDR range for Private Google Access
+# resource "google_compute_global_address" "private_google_access_cidr" {
+#   project       = var.config.project
+#   name          = "private-google-access-cidr"
+#   purpose       = "VPC_PEERING"
+#   address_type  = "INTERNAL"
+#   prefix_length = 20 # Adjust the prefix length according to your requirements
+#   network       = "default"
+# }
+# # --------------------------------------------------------
+# resource "google_filestore_instance" "instance" {
+#   name     = "dt-nfs"
+#   location = "us-central1-b"
+#   tier     = "BASIC_HDD"
+#   project  = var.config.project
+
+#   file_shares {
+#     capacity_gb = 1024
+#     name        = "testing"
+
+#     nfs_export_options {
+#       # ip_ranges   = ["10.10.0.0/24"]
+#       ip_ranges   = ["192.168.1.5", "192.168.1.7"]
+#       access_mode = "READ_ONLY"
+#       squash_mode = "ROOT_SQUASH"
+#       anon_uid    = 123
+#       anon_gid    = 456
+#     }
+
+#     nfs_export_options {
+#       ip_ranges = ["192.168.1.6"]
+#       # ip_ranges   = [for instance in local.lb_instances : instance.ip_address]
+#       access_mode = "READ_WRITE"
+#       squash_mode = "NO_ROOT_SQUASH"
+#     }
+#   }
+
+#   networks {
+#     network           = "default"
+#     modes             = ["MODE_IPV4"]
+#     connect_mode      = "PRIVATE_SERVICE_ACCESS"
+#     reserved_ip_range = "testing-ip-range"
+#   }
+# }
+# # --------------------------------------------------------
+
+
+# data "google_compute_global_address" "allocated_range" {
+#   name    = "default-ip-range" # Replace with the name of the allocated IP range you want to fetch
+#   project = var.config.project
+# }
+
+# output "allocated_ip_range_cidr" {
+#   value = data.google_compute_global_address.allocated_range
+# }
+
+# XXXXXXXXXXXXXX---FILE STORE---XXXXXXXXXXXXXXXXX
+
+
+# XXXXXXXXXXXXXX---vpc-private-connect---XXXXXXXXXXXXXXXXX
+
+# # Define the global network endpoint group
+# # Define the global network endpoint group
+# resource "google_compute_global_network_endpoint_group" "example" {
+#   project               = var.config.project
+#   name                  = "example-endpoint-group"
+#   description           = "Example global network endpoint group"
+#   network_endpoint_type = "INTERNET_IP_PORT" # Adjust based on your requirement
+# }
+
+
+# # Reserve an IP CIDR range for Private Google Access
+# resource "google_compute_global_address" "private_google_access_cidr" {
+#   project       = var.config.project
+#   name          = "private-google-access-cidr"
+#   purpose       = "VPC_PEERING"
+#   address_type  = "INTERNAL"
+#   prefix_length = 16 # Adjust the prefix length according to your requirements
+#   network       = "default"
+# }
+
+# resource "google_compute_global_network_endpoint" "private_google_access" {
+#   project                       = var.config.project
+#   provider                      = google-beta
+#   global_network_endpoint_group = google_compute_global_network_endpoint_group.example.name # Replace with the name of your global network endpoint group
+#   port                          = 80                                                        # Adjust the port number according to your requirements
+#   ip_address                    = "10.95.0.2"
+# }
+
+#NOT WORKING PROPERLY.
+
+# XXXXXXXXXXXXXX---vpc-private-connect---XXXXXXXXXXXXXXXXX
+
+
+
+# locals {
+#   lb_instances = [for vm_info in module.compute_instance["dynatrace"].instances_details : {
+#     name       = vm_info.name,
+#     id         = vm_info.id,
+#     zone       = vm_info.zone,
+#     ip_address = vm_info.network_interface[0].network_ip
+#   }]
+
+#   # vm_instances = [for vm_info in module.compute_instance["dynatrace"].instances_details : vm_info.id]
+# }
+
+# module "managed_instance_group" {
+#   project_id  = var.config.project
+#   source      = "terraform-google-modules/vm/google//modules/mig"
+#   version     = "11.1.0"
+#   region      = var.config.region
+#   target_size = 2
+#   named_ports = [{
+#     name = "https"
+#     port = 443
+#   }]
+#   instance_template = tostring(module.instance_template["dynatrace"].self_link)
+#   hostname          = "dynatrace-tcp-proxy-xlb-mig"
+#   # target_pools      = ["${module.gce-lb-fr.target_pool}"]
+#   # ssh_source_ranges = ["0.0.0.0/0"]
+# }
+
+
+# module "regional_proxy_lb" {
+#   source                   = "terraform-google-modules/lb/google//modules/regional_proxy_lb"
+#   version                  = "4.1.0"
+#   name                     = "dynatrace-lb"
+#   region                   = var.config.region
+#   project                  = var.config.project
+#   network_project          = var.config.project
+#   network                  = "default"
+#   target_tags              = ["dummy-tag"]
+#   port_front_end           = 443
+#   create_proxy_only_subnet = true
+#   proxy_only_subnet_cidr   = "192.168.5.0/24"
+#   create_firewall_rules    = true
+#   health_check = {
+#     description        = "Health check to determine whether instances are responsive and able to do work"
+#     check_interval_sec = 10
+#     tcp_health_check = {
+#       port_specification = "USE_SERVING_PORT"
+#     }
+#   }
+
+
+#   backend = {
+#     port             = 443
+#     port_name        = "tcp"
+#     backend_type     = "INSTANCE_GROUP"
+#     session_affinity = "CLIENT_IP"
+#     timeout_sec      = 50 #default 30
+
+#     log_config = {
+#       enable      = true
+#       sample_rate = 1
+#     }
+
+#     groups = [{
+#       group                        = module.managed_instance_group.instance_group
+#       balancing_mode               = "UTILIZATION"
+#       capacity_scaler              = 0.5
+#       max_connections_per_instance = 1000
+#       max_rate_per_instance        = null
+#       max_utilization              = 0.7
+#     }]
+#   }
+# }
+
+# module "load_balancer" {
+#   source       = "GoogleCloudPlatform/lb/google"
+#   version      = "~> 2.0.0"
+#   project      = var.config.project
+#   region       = var.config.region
+#   name         = "load-balancer"
+#   service_port = 443
+#   target_tags  = ["allow-lb-service"]
+#   network      = "default"
+# }
+
+# module "managed_instance_group" {
+#   source            = "terraform-google-modules/vm/google//modules/mig"
+#   version           = "~> 1.0.0"
+#   region            = var.config.region
+#   project           = var.config.project
+#   target_size       = 2
+#   hostname          = "mig-simple"
+#   instance_template = module.instance_template["dynatrace"].self_link
+#   target_pools      = [module.load_balancer.target_pool]
+#   named_ports = [{
+#     name = "http"
+#     port = 443
+#   }]
+# }
+
+
+
+#############WORKING BLOCK#############
+# Create external IP addresses for each instance
+# resource "google_compute_address" "default" {
+#   depends_on = [module.compute_instance]
+#   count      = length(local.lb_instances)
+#   name       = "${local.lb_instances[count.index].name}-external-ip"
+#   project    = var.config.project
+#   region     = var.config.region
+# }
+
+# # Create target instances for load balancing
+# resource "google_compute_target_instance" "default" {
+#   depends_on = [module.compute_instance]
+#   count      = length(local.lb_instances)
+#   project    = var.config.project
+#   zone       = local.lb_instances[count.index].zone
+#   name       = "${local.lb_instances[count.index].name}-tcp-target-instance"
+#   instance   = local.lb_instances[count.index].id
+# }
+
+
+# # Create forwarding rules for directing traffic to the target instances
+# resource "google_compute_forwarding_rule" "default" {
+#   depends_on            = [module.compute_instance]
+#   count                 = length(local.lb_instances)
+#   project               = var.config.project
+#   ip_protocol           = "TCP"
+#   name                  = "${local.lb_instances[count.index].name}-tcp-fwd-rule"
+#   region                = var.config.region
+#   load_balancing_scheme = "EXTERNAL"
+#   port_range            = "443"
+#   target                = google_compute_target_instance.default[count.index].self_link
+#   ip_address            = google_compute_address.default[count.index].address
+#   # ip_address = module.regional_external_address.addresses[count.index]
+
+# }
+
+
+# output "ip_addresses" {
+#   value = google_compute_address.default
+# }
+# output "target" {
+#   value = google_compute_target_instance.default
+# }
+
+# output "frd_rule" {
+#   value = google_compute_forwarding_rule.default
+# }
+
+
+# resource "ansible_playbook" "playbook" {
+#   depends_on = [
+#     # ansible_group.group,
+#     # ansible_host.hosts,
+#     module.compute_instance
+#   ]
+#   count    = length(local.lb_instances)
+#   playbook = "dynatrace-playbook.yml"
+#   name     = local.lb_instances[count.index].ip_address
+#   # name       = local.instances[0].ip_address
+#   # groups     = [ansible_group.group.name]
+#   verbosity  = 6
+#   replayable = true
+#   # temp_inventory_file = "inventory.ini"
+
+#   # extra_vars = {
+#   #   temp_inventory_file = "inventory.ini"
+#   #   inventory           = "inventory.ini"
+#   #   #   # private_key_file = "./dynatrace_ssh_key.pem"
+#   # }
+# }
+
+
+
+# output "lb_instances" {
+#   value = local.lb_instances
+# }
+
+##############WORKING BLOCK#############
+
+
 
 locals {
 
@@ -181,16 +790,7 @@ locals {
 #   }]
 # }
 
-locals {
-  lb_instances = [for vm_info in module.compute_instance["dynatrace"].instances_details : {
-    name       = vm_info.name,
-    id         = vm_info.id,
-    zone       = vm_info.zone,
-    ip_address = vm_info.network_interface[0].network_ip
-  }]
 
-  # vm_instances = [for vm_info in module.compute_instance["dynatrace"].instances_details : vm_info.id]
-}
 
 
 #####LEGACY MODULE ISSUE
@@ -288,66 +888,9 @@ locals {
 ##############SELF MODULES####################
 
 
-#############WORKING BLOCK#############
-# Create external IP addresses for each instance
-resource "google_compute_address" "default" {
-  depends_on = [module.compute_instance]
-  count      = length(local.lb_instances)
-  name       = "${local.lb_instances[count.index].name}-external-ip"
-  project    = var.config.project
-  region     = var.config.region
-}
-
-# Create target instances for load balancing
-resource "google_compute_target_instance" "default" {
-  depends_on = [module.compute_instance]
-  count      = length(local.lb_instances)
-  project    = var.config.project
-  zone       = local.lb_instances[count.index].zone
-  name       = "${local.lb_instances[count.index].name}-tcp-target-instance"
-  instance   = local.lb_instances[count.index].id
-}
-
-
-# Create forwarding rules for directing traffic to the target instances
-resource "google_compute_forwarding_rule" "default" {
-  depends_on            = [module.compute_instance]
-  count                 = length(local.lb_instances)
-  project               = var.config.project
-  ip_protocol           = "TCP"
-  name                  = "${local.lb_instances[count.index].name}-tcp-fwd-rule"
-  region                = var.config.region
-  load_balancing_scheme = "EXTERNAL"
-  port_range            = "443"
-  target                = google_compute_target_instance.default[count.index].self_link
-  ip_address            = google_compute_address.default[count.index].address
-  # ip_address = module.regional_external_address.addresses[count.index]
-
-}
-
-
-output "ip_addresses" {
-  value = google_compute_address.default
-}
-output "target" {
-  value = google_compute_target_instance.default
-}
-
-output "frd_rule" {
-  value = google_compute_forwarding_rule.default
-}
-# output "ip_addresses-module" {
-#   value = module.regional_external_address
-# }
-
-##############WORKING BLOCK#############
 
 # output "compute-op" {
 #   value = module.compute_instance["dynatrace"].instances_details[0].hostname
-# }
-
-# output "lb_instances" {
-#   value = local.lb_instances
 # }
 
 
@@ -505,28 +1048,6 @@ output "frd_rule" {
 #   name = "dyantrace"
 # }
 
-
-resource "ansible_playbook" "playbook" {
-  depends_on = [
-    # ansible_group.group,
-    # ansible_host.hosts,
-    module.compute_instance
-  ]
-  count    = length(local.lb_instances)
-  playbook = "dynatrace-playbook.yml"
-  name     = local.lb_instances[count.index].ip_address
-  # name       = local.instances[0].ip_address
-  # groups     = [ansible_group.group.name]
-  verbosity  = 6
-  replayable = true
-  # temp_inventory_file = "inventory.ini"
-
-  # extra_vars = {
-  #   temp_inventory_file = "inventory.ini"
-  #   inventory           = "inventory.ini"
-  #   #   # private_key_file = "./dynatrace_ssh_key.pem"
-  # }
-}
 
 # output "groups" {
 #   value = ansible_group.group
@@ -1176,4 +1697,5 @@ resource "ansible_playbook" "playbook" {
 #   # }
 
 # }
+
 
