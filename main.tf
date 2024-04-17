@@ -70,25 +70,25 @@ module "compute_instance" {
 #   }
 # }
 
-# data "external" "execute_script" {
-#   depends_on = [module.compute_instance]
+data "external" "execute_script" {
+  depends_on = [module.compute_instance]
 
-#   program = ["bash", "external_script.sh"]
+  program = ["bash", "external_script.sh"]
 
-#   query = {
-#     instance_data = jsonencode(flatten([
-#       for instance_key, instance_value in local.servers : {
-#         ip   = module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
-#         user = local.servers[instance_key].instance_config.gce_user,
-#         link = local.servers[instance_key].instance_config.link,
-#       }
-#     ]))
-#   }
-# }
+  query = {
+    instance_data = jsonencode(flatten([
+      for instance_key, instance_value in local.servers : {
+        ip   = module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
+        user = local.servers[instance_key].instance_config.gce_user,
+        link = local.servers[instance_key].instance_config.link,
+      }
+    ]))
+  }
+}
 
-# output "query_op" {
-#   value = data.external.execute_script.query
-# }
+output "query_op" {
+  value = data.external.execute_script.query
+}
 
 locals {
   instance_data = [
