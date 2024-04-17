@@ -19,5 +19,5 @@ for instance in "${!instance_array[@]}"; do
   # Convert the JSON into bash variables
   eval "$decoded_instance"
   echo "Processing instance at IP: $ip, user: $user, cloning repository: $link"
-  ssh "$user@$ip" "git clone $link"
+  ssh "$user@$ip" "git clone '$link'"
 done
