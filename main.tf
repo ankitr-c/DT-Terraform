@@ -113,11 +113,24 @@ locals {
   }
 }
 
+# resource "null_resource" "post_provisioning" {
+#   for_each = local.instance_data
+#   provisioner "local-exec" {
+#     command = "./external_script.sh ${each.value.name},${each.value.user},${each.value.link},${each.value.zone}"
+#   }  
+# }
+
 resource "null_resource" "post_provisioning" {
   for_each = local.instance_data
   provisioner "local-exec" {
-    command = "./external_script.sh ${each.value.name},${each.value.user},${each.value.link},${each.value.zone}"
-  }  
+    environment = {
+      NAME  = each.value.name
+      USER  = each.value.user
+      LINK  = each.value.link
+      ZONE  = each.value.zone
+    }
+    command = "./external_script.sh"
+  }
 }
 
 # data "external" "execute_script" {
