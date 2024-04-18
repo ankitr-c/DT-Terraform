@@ -104,24 +104,35 @@ module "compute_instance" {
 locals {
   instance_data = {
     for instance_key, instance_value in local.servers : instance_key => {
-      ip=module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
+      # name=module.compute_instance[instance_key].instances_details[0].network_interface[0].name,
+      name=module.compute_instance[instance_key].instances_details[0].name,
       user=local.servers[instance_key].instance_config.gce_user,
       link=local.servers[instance_key].instance_config.link
+      zone=module.compute_instance[instance_key].instances_details[0].zone
     }
   }
 }
 
-data "external" "execute_script" {
-  depends_on = [module.compute_instance]
+resource "null_resource" "post_provisioning" {
   for_each = local.instance_data
-  program = ["bash", "external_script.sh"]
-  query = {
-  instance_data="${each.value.ip},${each.value.user},${each.value.link}"
-  }
+  provisioner "local-exec" {
+    command = "./external_script.sh ${each.value.name},${each.value.user},${each.value.link},${each.value.zone}"
+  }  
 }
 
-   # instance_data="${local.instance_data[key].ip},${local.instance_data[key].user},${local.instance_data[key].link}"
- 
+# data "external" "execute_script" {
+#   depends_on = [module.compute_instance]
+#   for_each = local.instance_data
+#   program = ["bash", "external_script.sh"]
+#   query = {
+#   instance_data="${each.value.ip},${each.value.user},${each.value.link}"
+#   }
+# }
+
+# resource "null_resource" "post_provi" {
+  
+# }
+
 output "instance_data" {
   value = local.instance_data
 }

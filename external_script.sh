@@ -116,12 +116,16 @@ fi
 IFS=',' read -r -a input_array <<< "$1"
 
 # Extract IP, user, and link from the array
-ip="${input_array[0]}"
+name="${input_array[0]}"
 user="${input_array[1]}"
 link="${input_array[2]}"
+zone="${input_array[3]}"
+
 
 # Print instance information
 echo "Processing instance at IP: $ip, user: $user, cloning repository: $link"
 
 # SSH and clone repository
-ssh "$user@$ip" "git clone $link"
+# ssh "$user@$ip" "git clone $link"
+gcloud compute ssh $user@$name --zone=$zone --tunnel-through-iap --command "sudo yum install -y git && git clone $link"
+
