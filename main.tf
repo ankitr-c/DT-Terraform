@@ -70,40 +70,60 @@ module "compute_instance" {
 #   }
 # }
 
-data "external" "execute_script" {
-  depends_on = [module.compute_instance]
+# data "external" "execute_script" {
+#   depends_on = [module.compute_instance]
 
-  program = ["bash", "external_script.sh"]
+#   program = ["bash", "external_script.sh"]
 
-  query = {
-    instance_data = jsonencode(flatten([
-      for instance_key, instance_value in local.servers : {
-        ip   = module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
-        user = local.servers[instance_key].instance_config.gce_user,
-        link = local.servers[instance_key].instance_config.link,
-      }
-    ]))
+#   query = {
+#     instance_data = jsonencode(flatten([
+#       for instance_key, instance_value in local.servers : {
+#         ip   = module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
+#         user = local.servers[instance_key].instance_config.gce_user,
+#         link = local.servers[instance_key].instance_config.link,
+#       }
+#     ]))
+#   }
+# }
+
+# output "query_op" {
+#   value = data.external.execute_script.query
+# }
+
+# locals {
+#   instance_data = jsonencode([
+#     for instance_key, instance_value in local.servers : [
+#       # module.compute_instance[instance_key].instances_details.network_interface[0].network_ip,
+#       module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
+#       local.servers[instance_key].instance_config.gce_user,
+#       local.servers[instance_key].instance_config.link
+#     ]
+#   ])
+# }
+
+locals {
+  instance_data = {
+    for instance_key, instance_value in local.servers : instance_key => {
+      ip=module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
+      user=local.servers[instance_key].instance_config.gce_user,
+      link=local.servers[instance_key].instance_config.link
+    }
   }
 }
 
-output "query_op" {
-  value = data.external.execute_script.query
+data "external" "execute_script" {
+  depends_on = [module.compute_instance]
+  for_each = local.instance_data
+  program = ["bash", "external_script.sh"]
+  query = {
+  instance_data="${each.value.ip},${each.value.user},${each.value.link}"
+  }
 }
 
-locals {
-  instance_data = [
-    for instance_key, instance_value in local.servers : [
-      # module.compute_instance[instance_key].instances_details.network_interface[0].network_ip,
-      module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
-      local.servers[instance_key].instance_config.gce_user,
-      local.servers[instance_key].instance_config.link
-    ]
-  ]
-}
-
+   # instance_data="${local.instance_data[key].ip},${local.instance_data[key].user},${local.instance_data[key].link}"
+ 
 output "instance_data" {
   value = local.instance_data
-
 }
 
 # output "sample" {

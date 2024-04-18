@@ -1,0 +1,25 @@
+data "google_compute_instance" "existing_instances" {
+  for_each = local.servers
+
+  name = module.compute_instance[each.key].name
+  zone = module.compute_instance[each.key].zone
+}
+
+resource "null_resource" "post_provisioning" {
+  for_each = local.servers
+
+  provisioner "remote-exec" {
+    script = "path/to/your/script.sh"
+
+    connection {
+      type        = "ssh"
+      user        = "your_ssh_username"
+      private_key = file("path/to/your/private_key.pem")
+      host        = data.google_compute_instance.existing_instances[each.key].network_interface[0].access_config[0].nat_ip
+    }
+  }
+
+  depends_on = [
+    data.google_compute_instance.existing_instances
+  ]
+}
