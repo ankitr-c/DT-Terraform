@@ -48,142 +48,7 @@ module "compute_instance" {
   deletion_protection = false
   subnetwork          = var.network.subnet
   subnetwork_project  = var.network.project
-
-  # provisioner "local-exec" {
-  #   command = "ssh ${each.value.instance_config.gce_user}@${("${var.app.env}-${each.key}-001")} && git clone ${each.instance_config.link}"
-  # }
 }
-
-# data "external" "execute_script" {
-#   depends_on = [module.compute_instance]
-
-#   program = ["bash", "path/to/your/external_script.sh"]
-
-#   query = {
-#   instance_data = jsonencode([
-#     for instance_key, instance_value in local.servers : [      
-#       module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
-#       local.servers[instance_key].instance_config.gce_user,
-#       local.servers[instance_key].instance_config.link
-#     ]
-#   ])
-#   }
-# }
-
-# data "external" "execute_script" {
-#   depends_on = [module.compute_instance]
-
-#   program = ["bash", "external_script.sh"]
-
-#   query = {
-#     instance_data = jsonencode(flatten([
-#       for instance_key, instance_value in local.servers : {
-#         ip   = module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
-#         user = local.servers[instance_key].instance_config.gce_user,
-#         link = local.servers[instance_key].instance_config.link,
-#       }
-#     ]))
-#   }
-# }
-
-# output "query_op" {
-#   value = data.external.execute_script.query
-# }
-
-# locals {
-#   instance_data = jsonencode([
-#     for instance_key, instance_value in local.servers : [
-#       # module.compute_instance[instance_key].instances_details.network_interface[0].network_ip,
-#       module.compute_instance[instance_key].instances_details[0].network_interface[0].network_ip,
-#       local.servers[instance_key].instance_config.gce_user,
-#       local.servers[instance_key].instance_config.link
-#     ]
-#   ])
-# }
-
-locals {
-  instance_data = {
-    for instance_key, instance_value in local.servers : instance_key => {
-      # name=module.compute_instance[instance_key].instances_details[0].network_interface[0].name,
-      name=module.compute_instance[instance_key].instances_details[0].name,
-      user=local.servers[instance_key].instance_config.gce_user,
-      link=local.servers[instance_key].instance_config.link
-      zone=module.compute_instance[instance_key].instances_details[0].zone
-    }
-  }
-}
-
-# resource "null_resource" "post_provisioning" {
-#   for_each = local.instance_data
-#   provisioner "local-exec" {
-#     command = "./external_script.sh ${each.value.name},${each.value.user},${each.value.link},${each.value.zone}"
-#   }  
-# }
-
-resource "null_resource" "post_provisioning" {
-  for_each = local.instance_data
-  provisioner "local-exec" {
-    environment = {
-      NAME  = each.value.name
-      USER  = each.value.user
-      LINK  = each.value.link
-      ZONE  = each.value.zone
-    }
-    command = "./external_script.sh"
-  }
-}
-
-# data "external" "execute_script" {
-#   depends_on = [module.compute_instance]
-#   for_each = local.instance_data
-#   program = ["bash", "external_script.sh"]
-#   query = {
-#   instance_data="${each.value.ip},${each.value.user},${each.value.link}"
-#   }
-# }
-
-# resource "null_resource" "post_provi" {
-  
-# }
-
-output "instance_data" {
-  value = local.instance_data
-}
-
-# output "sample" {
-#   value = module.compute_instance["dt"].instances_details[0].network_interface[0].network_ip
-# }
-
-# locals {
-#   servers = {
-#     for idx, instance_config in var.server : instance_config.name => instance_config
-#   }
-# }
-
-# resource "google_compute_instance" "compute_instances" {
-#   count = length(local.servers)
-
-#   name         = "${var.app.env}-${local.servers[count.index].name}-001"
-#   machine_type = local.servers[count.index].machine_type
-#   zone         = local.servers[count.index].zone
-
-#   metadata_startup_script = "git clone ${local.servers[count.index].link}"
-
-#   provisioner "remote-exec" {
-#     inline = [
-#       "chmod +x /tmp/startup-script.sh",
-#       "sudo /tmp/startup-script.sh",
-#     ]
-
-#     connection {
-#       type        = "ssh"
-#       user        = local.servers[count.index].gce_user
-#       host        = self.network_interface[0].access_config[0].nat_ip
-#       private_key = file(var.ssh_private_key_path)
-#     }
-#   }
-# }
-
 
 module "instance_template" {
   source             = "terraform-google-modules/vm/google//modules/instance_template"
@@ -204,7 +69,10 @@ module "instance_template" {
   #   block-project-ssh-keys = true
   # } : {}
 
-
+  # startup_script="yum install -y git && git clone ${each.value.instance_config.link} /home/centos/project"
+  startup_script = templatefile("external_script.sh", {
+    INSTANCE_CONFIG_LINK = "${each.value.instance_config.link}"
+  })
   service_account = {
     email  = module.service_accounts[each.key].email
     scopes = ["cloud-platform"]
@@ -223,6 +91,36 @@ module "instance_template" {
   ]
 }
 
+# locals {
+#   startup_script_content = templatefile("external_script.sh", {
+#     INSTANCE_CONFIG_LINK = "test_link"
+#   })
+# }
+
+# output "file_Script" {
+#   value = local.startup_script_content
+# }
+
+
+##### FILE DATA BLOCKS#####
+
+# data "local_file" "startup_script" {
+#   filename = "external_script.sh"
+# }
+
+# data "template_file" "user_data" {
+#   template = file("external_script.sh")
+# }
+
+# output "script" {
+#   value = data.template_file.user_data.rendered
+# }
+
+# output "file" {
+#   value = data.local_file.startup_script.content
+# }
+
+##### FILE DATA BLOCKS#####
 
 
 #########################PRIVATE KEY PART####################
@@ -284,6 +182,150 @@ module "firewall_rules" {
     }
   }]
 }
+
+# ############ BELOW IS THE WORKING PASSTHROUGH LB BLOCK ################
+
+#   locals {
+#     lb_servers = {
+#       for server_name, vm_info in module.compute_instance :
+#       server_name => [for instance_details in vm_info.instances_details : instance_details.id]
+#       # if contains(["dynatrace"], server_name)
+#     }
+#   }
+
+# resource "google_compute_instance_group" "default" {
+#   project  = var.config.project
+#   zone     = "us-west1-a"
+#   for_each = local.lb_servers
+#   name     = "${each.key}-tcp-passthrough-umg"
+#   # instances = [for server_data in local.all_vms : server_data[2] if server_data[0] == "dynatrace"]
+#   instances = each.value
+#   named_port {
+#     name = "https"
+#     port = "443"
+#   }
+# }
+
+# resource "google_compute_region_health_check" "default" {
+#   for_each           = local.lb_servers
+#   project            = var.config.project
+#   region             = var.config.region
+#   name               = "${each.key}-tcp-passthrough-health-check"
+#   timeout_sec        = 1
+#   check_interval_sec = 5
+
+#   tcp_health_check {
+#     port = "443"
+#   }
+# }
+
+# resource "google_compute_region_backend_service" "default" {
+#   project               = var.config.project
+#   region                = var.config.region
+#   for_each              = local.lb_servers
+#   name                  = "${each.key}-tcp-passthrough-xlb-backend-service"
+#   protocol              = "TCP"
+#   port_name             = "tcp"
+#   load_balancing_scheme = "EXTERNAL"
+#   timeout_sec           = 10
+#   health_checks         = [google_compute_region_health_check.default[each.key].id]
+#   backend {
+#     group = google_compute_instance_group.default[each.key].id
+#     # balancing_mode = "UTILIZATION"
+#     balancing_mode = "CONNECTION"
+#     # max_utilization = 0.70
+#     # capacity_scaler = 1.0
+#   }
+# }
+
+
+
+# resource "google_compute_forwarding_rule" "default" {
+#   project               = var.config.project
+#   region                = var.config.region
+#   for_each              = local.lb_servers
+#   name                  = "${each.key}-tcp-passthrouugh-xlb-forwarding-rule"
+#   backend_service       = google_compute_region_backend_service.default[each.key].id
+#   ip_protocol           = "TCP"
+#   load_balancing_scheme = "EXTERNAL"
+#   port_range            = "443"
+#   # all_ports = true
+#   # allow_global_access = true
+#   # all_ports             = true
+#   # allow_global_access   = true
+#   # network               = google_compute_network.ilb_network.id
+#   # subnetwork            = google_compute_subnetwork.ilb_subnet.id
+# }
+
+# --------------------------------------------------
+
+############ ABOVE IS THE WORKING PASSTHROUGH LB BLOCK ################
+
+############ Below Null Block Is Working ############ 
+
+# locals {
+#   instance_data = {
+#     for instance_key, instance_value in local.servers : instance_key => {
+#       # name=module.compute_instance[instance_key].instances_details[0].network_interface[0].name,
+#       name=module.compute_instance[instance_key].instances_details[0].name,
+#       user=local.servers[instance_key].instance_config.gce_user,
+#       link=local.servers[instance_key].instance_config.link
+#       zone=module.compute_instance[instance_key].instances_details[0].zone
+#     }
+#   }
+# }
+
+# resource "null_resource" "post_provisioning" {
+#   for_each = local.instance_data
+#   provisioner "local-exec" {
+#     environment = {
+#       NAME  = each.value.name
+#       USER  = each.value.user
+#       LINK  = each.value.link
+#       ZONE  = each.value.zone
+#     }
+#     command = "./external_script.sh"
+#   }
+# }
+
+############ Above Null Block Is Working ############ 
+
+
+# output "sample" {
+#   value = module.compute_instance["dt"].instances_details[0].network_interface[0].network_ip
+# }
+
+# locals {
+#   servers = {
+#     for idx, instance_config in var.server : instance_config.name => instance_config
+#   }
+# }
+
+# resource "google_compute_instance" "compute_instances" {
+#   count = length(local.servers)
+
+#   name         = "${var.app.env}-${local.servers[count.index].name}-001"
+#   machine_type = local.servers[count.index].machine_type
+#   zone         = local.servers[count.index].zone
+
+#   metadata_startup_script = "git clone ${local.servers[count.index].link}"
+
+#   provisioner "remote-exec" {
+#     inline = [
+#       "chmod +x /tmp/startup-script.sh",
+#       "sudo /tmp/startup-script.sh",
+#     ]
+
+#     connection {
+#       type        = "ssh"
+#       user        = local.servers[count.index].gce_user
+#       host        = self.network_interface[0].access_config[0].nat_ip
+#       private_key = file(var.ssh_private_key_path)
+#     }
+#   }
+# }
+
+
 
 # XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
