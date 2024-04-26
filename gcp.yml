@@ -13,4 +13,4 @@ auth_kind: application
 #   remote1: "'vm_label' in (labels|list)"
 #   remote2: "'vm_label' in name"
 compose:
-  ansible_host: "10.138.0.3"
+  ansible_host: "labs-dynatrace-001"
