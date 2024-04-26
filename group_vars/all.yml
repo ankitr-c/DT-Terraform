@@ -1,0 +1,3 @@
+# ---
+# ansible_ssh_args: --tunnel-through-iap --zone=us-west1-a --no-user-output-enabled --quiet
+# ansible_scp_extra_args: --tunnel-through-iap --zone=us-west1-a --quiet
