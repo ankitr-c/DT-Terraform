@@ -107,9 +107,9 @@ resource "ansible_playbook" "playbook" {
   name       = "labs-dynatrace-001"
   verbosity  = 6
   replayable = true
-  extra_vars = {
-    ssh_args = "--tunnel-through-iap --zone=${each.value.zone} --no-user-output-enabled --quiet"
-  }
+#   extra_vars = {
+#     ssh_args = "--tunnel-through-iap --zone=${each.value.zone} --no-user-output-enabled --quiet"
+#   }
 }
 
 
