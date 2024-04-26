@@ -10,7 +10,7 @@ keyed_groups:
   - key: zone
     prefix: zone
 groups:
-  remote1: "'vm_label' in (labels|list)"
-  remote2: "'vm_label' in name"
+  remote1: "'lab' in name"
+
 compose:
-  ansible_host: "labs-dynatrace-001"
+  ansible_host: name
