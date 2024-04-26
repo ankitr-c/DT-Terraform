@@ -104,7 +104,7 @@ resource "ansible_playbook" "playbook" {
   depends_on = [module.compute_instance]
   for_each   = local.lb_instances
   playbook   = "dynatrace-playbook.yml"
-  name       = each.value.ip_address
+  name       = "labs-dynatrace-001"
   verbosity  = 6
   replayable = true
   extra_vars = {

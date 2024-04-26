@@ -1,16 +1,16 @@
 ---
 plugin: gcp_compute
 projects: 
-  - project_id
+  - clear-network-418110
 filters: []
 auth_kind: application
-keyed_groups:
-  - key: lables
-    prefix: label
-  - key: zone
-    prefix: zone
-groups:
-  remote1: "'vm_label' in (labels|list)"
-  remote2: "'vm_label' in name"
+# keyed_groups:
+#   - key: lables
+#     prefix: label
+#   - key: zone
+#     prefix: zone
+# groups:
+#   remote1: "'vm_label' in (labels|list)"
+#   remote2: "'vm_label' in name"
 compose:
-  ansible_host: name
+  ansible_host: "10.138.0.3"
