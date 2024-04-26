@@ -1,3 +1,15 @@
+# ip=$(gcloud filestore instances describe ${name} --project=${project} --zone=${zone} | grep -A1 'ipAddresses' | awk 'NR==2 {print $2}')
+# mount -t nfs -o timeo=300 ${ip}:/testing /home/centos/NFS_Mount
+
+# touch /home/centos/NFS_Mount/test
+# echo $ip > /home/centos/test_ip
+
+
+
+
+# mount -t nfs -o timeo=300 ${nfs_ip}:/testing /home/centos/NFS_Mount
+
+
 # instance_data=("$@")
 # for data in "${instance_data[@]}"; do
 #     read -r ip user link <<< "$data"    
@@ -147,3 +159,70 @@
 # gcloud compute ssh "$user@$name" --zone="$zone" --tunnel-through-iap --command "sudo yum install -y git && git clone $link"
 
 # XXXXXXXXXXXXXXX--Above Is Stable Script--XXXXXXXXXXXXXXXXXX
+
+
+
+
+# ---------------------------------------------
+
+
+
+# yum install -y git
+# git clone ${INSTANCE_CONFIG_LINK} /home/centos/project
+# yum install wget screen -y
+
+# ---------------------------------------------
+
+# #!bin/bash
+# yum install screen -y
+# # Run the while loop in the background for 60 seconds
+# seconds=0
+# while [ $seconds -lt 60 ]; do
+#     echo "Main Screen - Second: $seconds"
+#     sleep 1
+#     ((seconds++))
+# done &
+
+# # Start a screen session in the foreground and run the while loop for 120 seconds
+# screen -S myscreen bash -c '
+# seconds=0
+# while [ $seconds -lt 58 ]; do
+#     echo "Screen 1 - Second: $seconds"
+#     sleep 1
+#     ((seconds++))
+# done
+# exit
+# '
+# wait 
+
+# exit
+
+# ---------------------------------------------
+# mkdir /home/ankitraut0987/logs
+# cd /home/ankitraut0987/logs/
+# touch script.log
+# min=0
+# while [ $seconds -lt 5 ]; do
+#     echo "Main Screen - Min: $min"
+#     sleep 60
+#     "--------------------------" >> script.log
+#     uptime >> script.log
+#     ((min++))
+# done
+
+
+# #!/bin/bash
+# mkdir -p /home/ankitraut0987/logs
+# cd /home/ankitraut0987/logs/
+# > script.log
+
+# min=0
+
+# while [ $min -lt 5 ]; do
+#     echo "Main Screen - Min: $min"
+#     echo "--------------------------" >> script.log
+#     uptime >> script.log
+#     sleep 60
+#     ((min++))
+# done
+

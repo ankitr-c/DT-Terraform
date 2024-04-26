@@ -1,7 +1,7 @@
-data "google_compute_zones" "available" {
-  project = var.config.project
-  region  = var.config.region
-}
+# data "google_compute_zones" "available" {
+#   project = var.config.project
+#   region  = var.config.region
+# }
 
 locals {
   default_roles = [

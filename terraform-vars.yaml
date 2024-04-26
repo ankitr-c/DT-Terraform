@@ -83,124 +83,125 @@ server:
             ]
           source_ranges: ["10.0.0.0/8"] # allow-ssh-from-iap and vpn
           tags: ["dynatrace"]
+# ---------------
+# - name: dt
+#   labels:
+#     owner: sniper
+#     # application: dynatrace
+#     application: dt
 
-  - name: dt
-    labels:
-      owner: sniper
-      application: dynatrace
+#   tags:
+#     - dynatrace
+#     - http-server
+#     - https-server
+#     - allow-iap-traffic
 
-    tags:
-      - dynatrace
-      - http-server
-      - https-server
-      - allow-iap-traffic
+#   additional_ssh_allow_cidr: []
 
-    additional_ssh_allow_cidr: []
+#   additional_service_account_roles: []
 
-    additional_service_account_roles: []
+#   instance_config:
+#     link: https://github.com/ankitr-c/DT-Terraform.git
+#     # count: 2
+#     machine_type: e2-standard-4
+#     allow_stopping_for_update: true
+#     deletion_protection: false
+#     source_image: centos-stream-8-v20221102
+#     root_disk_size: 20
+#     root_disk_type: pd-ssd
+#     gce_user: centos
+#     automatic_restart: true
+#     additional_disk_name: disk-2
+#     additional_disk_size: 30
+#     additional_disk_type: pd-standard
+#     os_type: linux
 
-    instance_config:
-      link: https://github.com/ankitr-c/DT-Terraform.git
-      # count: 2
-      machine_type: e2-standard-4
-      allow_stopping_for_update: true
-      deletion_protection: false
-      source_image: centos-stream-8-v20221102
-      root_disk_size: 20
-      root_disk_type: pd-ssd
-      gce_user: centos
-      automatic_restart: true
-      additional_disk_name: disk-2
-      additional_disk_size: 30
-      additional_disk_type: pd-standard
-      os_type: linux
+#     firewall_rules:
+#       - name: fw-ssh-on-dynatrace-v2
+#         direction: INGRESS
+#         protocol: tcp
+#         ports: ["22"]
+#         source_ranges: ["10.0.0.0/16"]
+#         tags: ["dynatrace"]
+#       - name: fw-dynatrace-app-traffic-v2
+#         direction: INGRESS
+#         protocol: tcp
+#         ports:
+#           [
+#             "9999",
+#             "7199",
+#             "8020",
+#             "8019",
+#             "5701",
+#             "5711",
+#             "7001",
+#             "8018",
+#             "9200",
+#             "8022",
+#             "9042",
+#             "8443",
+#             "8021",
+#             "9300",
+#             "7000",
+#             "443",
+#           ]
+#         source_ranges: ["10.0.0.0/8"]
+#         tags: ["dynatrace"]
+# -----------------
+# - name: dt2 # VM Instance Name
+#   labels: # Labels of VM, which will use to filter instance at GCP ansible dynamic inventory
+#     owner: sniper
+#     application: dynatrace
 
-      firewall_rules:
-        - name: fw-ssh-on-dynatrace-v2
-          direction: INGRESS
-          protocol: tcp
-          ports: ["22"]
-          source_ranges: ["10.0.0.0/16"]
-          tags: ["dynatrace"]
-        - name: fw-dynatrace-app-traffic-v2
-          direction: INGRESS
-          protocol: tcp
-          ports:
-            [
-              "9999",
-              "7199",
-              "8020",
-              "8019",
-              "5701",
-              "5711",
-              "7001",
-              "8018",
-              "9200",
-              "8022",
-              "9042",
-              "8443",
-              "8021",
-              "9300",
-              "7000",
-              "443",
-            ]
-          source_ranges: ["10.0.0.0/8"]
-          tags: ["dynatrace"]
+#   tags: # Network tag
+#     - dynatrace
+#     - http-server
+#     - https-server
 
-  # - name: dt2 # VM Instance Name
-  #   labels: # Labels of VM, which will use to filter instance at GCP ansible dynamic inventory
-  #     owner: sniper
-  #     application: dynatrace
+#   additional_ssh_allow_cidr: [] # Additional SSH firewall rule CIDR to allow IP's or CIDR ranges to ssh on VM instance
 
-  #   tags: # Network tag
-  #     - dynatrace
-  #     - http-server
-  #     - https-server
+#   additional_service_account_roles: []
 
-  #   additional_ssh_allow_cidr: [] # Additional SSH firewall rule CIDR to allow IP's or CIDR ranges to ssh on VM instance
+#   instance_config:
+#     count: 1
+#     machine_type: e2-standard-4 # Machine type to create
+#     allow_stopping_for_update: true # If true, allows Terraform to stop the instance to update its properties
+#     deletion_protection: false # If true, the instance cannot be deleted
+#     source_image: centos-stream-8-v20221102 # Source disk image
+#     root_disk_size: 20 # Root disk size in gb
+#     root_disk_type: pd-ssd # Root disk type
+#     gce_user: centos # SSH user
+#     automatic_restart: true # Specifies whether the instance should be automatically restarted if its terminated by CE
+#     additional_disk_name: disk-2 # Additional disk name
+#     additional_disk_size: 30 # Additional disk size in gb
+#     additional_disk_type: pd-standard # Additional disk type
+#     os_type: linux
 
-  #   additional_service_account_roles: []
+# - name: dt3 # VM Instance Name
+#   labels: # Labels of VM, which will use to filter instance at GCP ansible dynamic inventory
+#     owner: sniper
+#     application: dynatrace
 
-  #   instance_config:
-  #     count: 1
-  #     machine_type: e2-standard-4 # Machine type to create
-  #     allow_stopping_for_update: true # If true, allows Terraform to stop the instance to update its properties
-  #     deletion_protection: false # If true, the instance cannot be deleted
-  #     source_image: centos-stream-8-v20221102 # Source disk image
-  #     root_disk_size: 20 # Root disk size in gb
-  #     root_disk_type: pd-ssd # Root disk type
-  #     gce_user: centos # SSH user
-  #     automatic_restart: true # Specifies whether the instance should be automatically restarted if its terminated by CE
-  #     additional_disk_name: disk-2 # Additional disk name
-  #     additional_disk_size: 30 # Additional disk size in gb
-  #     additional_disk_type: pd-standard # Additional disk type
-  #     os_type: linux
+#   tags: # Network tag
+#     - dynatrace
+#     - http-server
+#     - https-server
 
-  # - name: dt3 # VM Instance Name
-  #   labels: # Labels of VM, which will use to filter instance at GCP ansible dynamic inventory
-  #     owner: sniper
-  #     application: dynatrace
+#   additional_ssh_allow_cidr: [] # Additional SSH firewall rule CIDR to allow IP's or CIDR ranges to ssh on VM instance
 
-  #   tags: # Network tag
-  #     - dynatrace
-  #     - http-server
-  #     - https-server
+#   additional_service_account_roles: []
 
-  #   additional_ssh_allow_cidr: [] # Additional SSH firewall rule CIDR to allow IP's or CIDR ranges to ssh on VM instance
-
-  #   additional_service_account_roles: []
-
-  #   instance_config:
-  #     count: 1
-  #     machine_type: e2-standard-4 # Machine type to create
-  #     allow_stopping_for_update: true # If true, allows Terraform to stop the instance to update its properties
-  #     deletion_protection: false # If true, the instance cannot be deleted
-  #     source_image: centos-stream-8-v20221102 # Source disk image
-  #     root_disk_size: 20 # Root disk size in gb
-  #     root_disk_type: pd-ssd # Root disk type
-  #     gce_user: centos # SSH user
-  #     automatic_restart: true # Specifies whether the instance should be automatically restarted if its terminated by CE
-  #     additional_disk_name: disk-2 # Additional disk name
-  #     additional_disk_size: 30 # Additional disk size in gb
-  #     additional_disk_type: pd-standard # Additional disk type
-  #     os_type: linux
+#   instance_config:
+#     count: 1
+#     machine_type: e2-standard-4 # Machine type to create
+#     allow_stopping_for_update: true # If true, allows Terraform to stop the instance to update its properties
+#     deletion_protection: false # If true, the instance cannot be deleted
+#     source_image: centos-stream-8-v20221102 # Source disk image
+#     root_disk_size: 20 # Root disk size in gb
+#     root_disk_type: pd-ssd # Root disk type
+#     gce_user: centos # SSH user
+#     automatic_restart: true # Specifies whether the instance should be automatically restarted if its terminated by CE
+#     additional_disk_name: disk-2 # Additional disk name
+#     additional_disk_size: 30 # Additional disk size in gb
+#     additional_disk_type: pd-standard # Additional disk type
+#     os_type: linux
