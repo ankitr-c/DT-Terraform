@@ -9,8 +9,8 @@ keyed_groups:
     prefix: dynatrace
   # - key: zone
   #   prefix: zone
-groups:
-  dynatrace: "'lab' in name"
+# groups:
+#   dynatrace: "'lab' in name"
 
 compose:
   ansible_host: labs-dynatrace-001
