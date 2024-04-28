@@ -1,16 +1,16 @@
 ---
 plugin: gcp_compute
-projects: 
+projects:
   - clear-network-418110
 # filters: []
 auth_kind: application
 # keyed_groups:
 #   - key: application
 #     prefix: dynatrace
-  # - key: zone
-  #   prefix: zone
+# - key: zone
+#   prefix: zone
 # groups:
 #   dynatrace: "'lab' in name"
 
 compose:
-  ansible_host: "10.138.0.2"
+  ansible_host: "labs-dynatrace-001"
