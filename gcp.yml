@@ -2,11 +2,11 @@
 plugin: gcp_compute
 projects: 
   - clear-network-418110
-filters: []
+# filters: []
 auth_kind: application
-keyed_groups:
-  - key: application
-    prefix: dynatrace
+# keyed_groups:
+#   - key: application
+#     prefix: dynatrace
   # - key: zone
   #   prefix: zone
 # groups:
