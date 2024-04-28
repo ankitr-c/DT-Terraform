@@ -13,4 +13,4 @@ groups:
   dynatrace: "'lab' in name"
 
 compose:
-  ansible_host: name
+  ansible_host: labs-dynatrace-001
