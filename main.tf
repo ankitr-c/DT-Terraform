@@ -35,13 +35,13 @@ locals {
 }
 
 module "compute_instance" {
-  source              = "terraform-google-modules/vm/google//modules/compute_instance"
-  version             = "~>9.0.0"
-  for_each            = local.servers
-  region              = var.config.region
-  hostname            = "${var.app.env}-${each.key}"
-  instance_template   = module.instance_template[each.key].self_link
-#   num_instances       = each.value.instance_config.count
+  source            = "terraform-google-modules/vm/google//modules/compute_instance"
+  version           = "~>9.0.0"
+  for_each          = local.servers
+  region            = var.config.region
+  hostname          = "${var.app.env}-${each.key}"
+  instance_template = module.instance_template[each.key].self_link
+  #   num_instances       = each.value.instance_config.count
   deletion_protection = false
   subnetwork          = var.network.subnet
   subnetwork_project  = var.network.project
@@ -104,12 +104,13 @@ resource "ansible_playbook" "playbook" {
   depends_on = [module.compute_instance]
   for_each   = local.lb_instances
   playbook   = "dynatrace-playbook.yml"
-  name       = "labs-dynatrace-001"
+    name       = "labs-dynatrace-001"
+  # name       = each.value.ip_address
   verbosity  = 6
   replayable = true
-#   extra_vars = {
-#     ssh_args = "--tunnel-through-iap --zone=${each.value.zone} --no-user-output-enabled --quiet"
-#   }
+  #   extra_vars = {
+  #     ssh_args = "--tunnel-through-iap --zone=${each.value.zone} --no-user-output-enabled --quiet"
+  #   }
 }
 
 

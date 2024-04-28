@@ -5,12 +5,12 @@ projects:
 filters: []
 auth_kind: application
 keyed_groups:
-  - key: lables
-    prefix: label
-  - key: zone
-    prefix: zone
+  - key: application
+    prefix: dynatrace
+  # - key: zone
+  #   prefix: zone
 groups:
-  remote1: "'lab' in name"
+  dynatrace: "'lab' in name"
 
 compose:
   ansible_host: name
