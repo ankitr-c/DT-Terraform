@@ -13,4 +13,4 @@ auth_kind: application
 #   dynatrace: "'lab' in name"
 
 compose:
-  ansible_host: labs-dynatrace-001
+  ansible_host: "10.138.0.2"
