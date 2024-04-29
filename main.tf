@@ -102,7 +102,7 @@ locals {
 
 resource "ansible_playbook" "playbook" {
   depends_on = [module.compute_instance]
-  for_each   = local.lb_instances
+  # for_each   = local.lb_instances
   playbook   = "dynatrace-playbook.yml"
   name       = "labs-dynatrace-001"
   # name       = each.value.ip_address

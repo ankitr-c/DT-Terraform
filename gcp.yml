@@ -4,8 +4,8 @@ projects:
   - clear-network-418110
 auth_kind: application
 
-groups:
-  dynatrace: "'labs' in name"
+# groups:
+#   dynatrace: "'labs' in name"
 
 hostnames:
   - "labs-dynatrace-001"
