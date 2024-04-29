@@ -5,7 +5,7 @@ projects:
 auth_kind: application
 
 groups:
-  dynatrace: "'lab' in name"
+  dynatrace: "'labs' in name"
 
 
 
