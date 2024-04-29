@@ -7,7 +7,8 @@ auth_kind: application
 groups:
   dynatrace: "'labs' in name"
 
-
+hostnames:
+  - "labs-dynatrace-001"
 
 # ---
 # plugin: gcp_compute
