@@ -3,12 +3,44 @@ plugin: gcp_compute
 projects:
   - clear-network-418110
 auth_kind: application
-# auth_kind: serviceaccount
-# service_account_file: key.json
-filters:
-  - name = labs-dynatrace-001
+keyed_groups:
+  - key: labels.dynatrace
+groups:
+  dt: "'labs' in name"
 hostnames:
- - name
+  - name
+
+
+
+
+# ---
+# plugin: gcp_compute
+# projects:
+#   - clear-network-418110
+# auth_kind: application
+# # auth_kind: serviceaccount
+# # service_account_file: key.json
+# filters:
+#   - name = labs-dynatrace-001
+# hostnames:
+#  - name
+
+# ---
+# plugin: gcp_compute
+# projects:
+#   - clear-network-418110
+# auth_kind: application
+# keyed_groups:
+#   - key: labels.dynatrace
+#     prefix: label
+#   - key: (tags.items|list)
+#     prefix: tag
+# groups:
+#   gke          : "'labs' in name"
+# compose:
+#   ansible_host: name
+# hostnames:
+#   - name
 
 # ---
 # plugin: gcp_compute
