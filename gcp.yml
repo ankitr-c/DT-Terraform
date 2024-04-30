@@ -2,8 +2,9 @@
 plugin: gcp_compute
 projects:
   - clear-network-418110
-auth_kind: serviceaccount
-service_account_file: key.json
+auth_kind: application
+# auth_kind: serviceaccount
+# service_account_file: key.json
 filters:
   - name = labs-dynatrace-001
 hostnames:
