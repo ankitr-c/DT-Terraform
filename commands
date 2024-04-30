@@ -11,3 +11,6 @@ gcloud compute target-instances describe INSTANCE_NAME --zone=ZONE --format="get
 gcloud compute target-instances describe INSTANCE_NAME --zone=ZONE
 
 gcloud compute target-instances list 
+
+
+gcloud compute ssh labs-dynatrace-001 --project=clear-network-418110 --zone=us-west1-a --tunnel-through-iap

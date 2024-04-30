@@ -2,13 +2,12 @@
 plugin: gcp_compute
 projects:
   - clear-network-418110
-auth_kind: application
-
-# groups:
-#   dynatrace: "'labs' in name"
-
+auth_kind: serviceaccount
+service_account_file: key.json
+filters:
+  - name = labs-dynatrace-001
 hostnames:
-  - "labs-dynatrace-001"
+ - name
 
 # ---
 # plugin: gcp_compute
