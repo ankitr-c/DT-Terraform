@@ -102,15 +102,15 @@ locals {
 
 resource "ansible_playbook" "playbook" {
   depends_on = [module.compute_instance]
-  for_each   = local.lb_instances
+  # for_each   = local.lb_instances
   playbook   = "dynatrace-playbook.yml"
   name       = "labs-dynatrace-001"
   # name       = each.value.ip_address
   verbosity  = 6
   replayable = true
-    extra_vars = {
-      ssh_args = "--tunnel-through-iap --zone=${each.value.zone} --no-user-output-enabled --quiet"
-    }
+    # extra_vars = {
+    #   ssh_args = "--tunnel-through-iap --zone=${each.value.zone} --no-user-output-enabled --quiet"
+    # }
 }
 
 
